@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_color"
+    tools:context=".OnboardingActivity">
+
+    <!-- Status Bar Spacer -->
+    <View
+        android:id="@+id/status_bar_spacer"
+        android:layout_width="match_parent"
+        android:layout_height="24dp"
+        android:layout_alignParentTop="true" />
+
+    <!-- ViewPager for swipeable pages -->
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/view_pager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/bottom_layout"
+        android:layout_below="@+id/status_bar_spacer" />
+
+    <!-- Bottom Section with Indicators and Buttons -->
+    <LinearLayout
+        android:id="@+id/bottom_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="32dp"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- Page Indicator -->
+        <LinearLayout
+            android:id="@+id/page_indicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginBottom="32dp"
+            android:orientation="horizontal">
+
+            <View
+                android:id="@+id/indicator_0"
+                android:layout_width="24dp"
+                android:layout_height="4dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/indicator_active" />
+
+            <View
+                android:id="@+id/indicator_1"
+                android:layout_width="8dp"
+                android:layout_height="4dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/indicator_inactive" />
+
+            <View
+                android:id="@+id/indicator_2"
+                android:layout_width="8dp"
+                android:layout_height="4dp"
+                android:background="@drawable/indicator_inactive" />
+
+        </LinearLayout>
+
+        <!-- Get Started Button -->
+        <Button
+            android:id="@+id/btn_get_started"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/button_primary"
+            android:fontFamily="@font/roboto_medium"
+            android:text="Get Started"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <!-- Next Button -->
+        <Button
+            android:id="@+id/btn_next"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/button_primary"
+            android:fontFamily="@font/roboto_medium"
+            android:text="Next"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <!-- Skip Button -->
+        <Button
+            android:id="@+id/btn_skip"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="@drawable/button_secondary"
+            android:fontFamily="@font/roboto_medium"
+            android:text="Skip"
+            android:textColor="@color/blue_primary"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+
+</RelativeLayout>
