@@ -18,6 +18,8 @@ public class OnboardingActivity extends AppCompatActivity {
     private Button btnNext;
     private Button btnSkip;
     private View[] indicators;
+    private PreferencesManager preferencesManager;
+
 
     private OnboardingPagerAdapter pagerAdapter;
     private int currentPage = 0;
@@ -36,7 +38,16 @@ public class OnboardingActivity extends AppCompatActivity {
         }
 
         setupStatusBar();
-        setContentView(R.layout.activity_onboarding);
+        preferencesManager = new PreferencesManager(this);
+
+// Check if user has already completed onboarding and registration
+        if (!preferencesManager.isFirstLaunch() && preferencesManager.isProfileComplete()) {
+            proceedToMainApp(); // Already exists
+            return;
+        }
+
+        setContentView(R.layout.activity_onboarding); // Keep after checking
+
 
         initViews();
         setupViewPager();
@@ -88,14 +99,21 @@ public class OnboardingActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
-        btnGetStarted.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                animateButton(v);
-                markOnboardingAsSeen();
+        btnGetStarted.setOnClickListener(v -> {
+            animateButton(v);
+            markOnboardingAsSeen();
+
+            if (preferencesManager.isFirstLaunch() || !preferencesManager.isProfileComplete()) {
+                // Go to Registration
+                Intent intent = new Intent(OnboardingActivity.this, RegistrationActivity.class);
+                startActivity(intent);
+            } else {
                 proceedToMainApp();
             }
+
+            finish(); // Prevent going back to onboarding
         });
+
 
         btnNext.setOnClickListener(new View.OnClickListener() {
             @Override

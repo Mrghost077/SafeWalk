@@ -1,3 +1,36 @@
 <resources>
     <string name="app_name">SafeWalk</string>
+
+    <!-- Registration Activity -->
+    <string name="registration_title">Registration &amp; Setup</string>
+    <string name="create_account">Create Account</string>
+    <string name="full_name_hint">Full Name</string>
+    <string name="email_address_hint">Email Address</string>
+    <string name="phone_number_hint">Phone Number</string>
+    <string name="emergency_pin_hint">Emergency PIN (4 digits)</string>
+    <string name="confirm_pin_hint">Confirm PIN</string>
+    <string name="location_permission_text">Allow location access for safety features</string>
+    <string name="camera_permission_text">Enable camera &amp; microphone for evidence recording</string>
+
+    <!-- Validation Messages -->
+    <string name="error_invalid_name">Please enter a valid full name</string>
+    <string name="error_invalid_email">Please enter a valid email address</string>
+    <string name="error_invalid_phone">Please enter a valid phone number</string>
+    <string name="error_invalid_pin">PIN must be exactly 4 digits</string>
+    <string name="error_pin_mismatch">PINs do not match</string>
+    <string name="error_fix_errors">Please fix all errors before proceeding</string>
+
+    <!-- Success Messages -->
+    <string name="account_created_success">Account created successfully!</string>
+    <string name="account_creation_failed">Failed to create account. Please try again.</string>
+
+    <!-- Permission Messages -->
+    <string name="location_permission_required">Location permission is required for safety features</string>
+    <string name="camera_permission_required">Camera/microphone permission is required for evidence recording</string>
+
+    <!-- Dialog Messages -->
+    <string name="exit_registration_title">Exit Registration</string>
+    <string name="exit_registration_message">Are you sure you want to exit? Your progress will be lost.</string>
+    <string name="exit">Exit</string>
+    <string name="continue_text">Continue</string>
 </resources>
