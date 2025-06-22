@@ -13,18 +13,6 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <TextView
-            android:id="@+id/tvDashboardTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/button_primary"
-            android:gravity="center"
-            android:padding="12dp"
-            android:text="SafeWalk Dashboard"
-            android:textColor="@color/white"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -65,7 +53,8 @@
             android:text="🚨 EMERGENCY SOS"
             android:textColor="@color/white"
             android:textSize="18sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:padding="16dp" />
 
         <LinearLayout
             android:layout_width="match_parent"

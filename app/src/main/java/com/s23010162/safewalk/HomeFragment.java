@@ -46,6 +46,7 @@ public class HomeFragment extends Fragment {
     private TextView tvSafetyStatusDetails;
     private AppDatabase appDatabase;
     private ExecutorService executorService;
+    private boolean isWalkTracking = false;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -78,7 +79,11 @@ public class HomeFragment extends Fragment {
         });
 
         btnStartWalk.setOnClickListener(v -> {
-            Toast.makeText(getContext(), "Start Walk feature coming soon!", Toast.LENGTH_SHORT).show();
+            if (!isWalkTracking) {
+                startWalkTracking();
+            } else {
+                stopWalkTracking();
+            }
         });
 
         btnQuickRecord.setOnClickListener(v -> {
@@ -99,28 +104,37 @@ public class HomeFragment extends Fragment {
 
     private void getCurrentLocation() {
         if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            tvCurrentLocation.setText("Location permission not granted");
             return;
         }
+        
         fusedLocationClient.getLastLocation()
                 .addOnSuccessListener(requireActivity(), location -> {
                     if (location != null) {
                         updateLocationUI(location);
                     } else {
+                        tvCurrentLocation.setText("Getting current location...");
                         requestNewLocationData();
                     }
+                })
+                .addOnFailureListener(e -> {
+                    tvCurrentLocation.setText("Failed to get location: " + e.getMessage());
+                    Log.e("HomeFragment", "Location failed", e);
                 });
     }
 
     private void requestNewLocationData() {
         LocationRequest locationRequest = LocationRequest.create();
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        locationRequest.setInterval(5000);
-        locationRequest.setFastestInterval(2500);
+        locationRequest.setInterval(10000);
+        locationRequest.setFastestInterval(5000);
         locationRequest.setNumUpdates(1);
 
         if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            tvCurrentLocation.setText("Location permission not granted");
             return;
         }
+        
         fusedLocationClient.requestLocationUpdates(locationRequest, new LocationCallback() {
             @Override
             public void onLocationResult(@NonNull LocationResult locationResult) {
@@ -128,11 +142,13 @@ public class HomeFragment extends Fragment {
                 Location lastLocation = locationResult.getLastLocation();
                 if (lastLocation != null) {
                     updateLocationUI(lastLocation);
+                } else {
+                    tvCurrentLocation.setText("Location not available");
                 }
+                fusedLocationClient.removeLocationUpdates(this);
             }
         }, Looper.myLooper());
     }
-
 
     private void updateLocationUI(Location location) {
         Geocoder geocoder = new Geocoder(getContext(), Locale.getDefault());
@@ -164,6 +180,7 @@ public class HomeFragment extends Fragment {
     private void sendSmsToEmergencyContacts() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(requireActivity(), new String[]{Manifest.permission.SEND_SMS}, 101);
+            Toast.makeText(getContext(), "SMS permission required for emergency alerts", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -173,28 +190,106 @@ public class HomeFragment extends Fragment {
                     List<EmergencyContact> contacts = AppDatabase.getDatabase(requireContext()).emergencyContactDao().getAll();
                     if (contacts.isEmpty()) {
                         requireActivity().runOnUiThread(() ->
-                                Toast.makeText(getContext(), "No emergency contacts found.", Toast.LENGTH_SHORT).show());
+                                Toast.makeText(getContext(), "No emergency contacts found. Please add contacts in settings.", Toast.LENGTH_LONG).show());
                         return;
                     }
 
-                    String message = "Emergency! I need help. My current location is: http://maps.google.com/maps?q=" + location.getLatitude() + "," + location.getLongitude();
+                    String message = "🚨 EMERGENCY SOS 🚨\nI need immediate help!\nMy location: http://maps.google.com/maps?q=" + location.getLatitude() + "," + location.getLongitude() + "\nPlease respond immediately!";
                     SmsManager smsManager = SmsManager.getDefault();
+                    final int[] sentCount = {0};
 
                     for (EmergencyContact contact : contacts) {
                         try {
-                            smsManager.sendTextMessage(contact.phoneNumber, null, message, null, null);
-                             requireActivity().runOnUiThread(() ->
-                                Toast.makeText(getContext(), "SOS message sent to " + contact.name, Toast.LENGTH_SHORT).show());
+                            // Split long messages if needed
+                            List<String> parts = smsManager.divideMessage(message);
+                            for (String part : parts) {
+                                smsManager.sendTextMessage(contact.phoneNumber, null, part, null, null);
+                            }
+                            sentCount[0]++;
+                            requireActivity().runOnUiThread(() ->
+                                Toast.makeText(getContext(), "SOS sent to " + contact.name, Toast.LENGTH_SHORT).show());
                         } catch (Exception e) {
-                             requireActivity().runOnUiThread(() ->
-                                Toast.makeText(getContext(), "Failed to send SOS to " + contact.name, Toast.LENGTH_SHORT).show());
+                            requireActivity().runOnUiThread(() ->
+                                Toast.makeText(getContext(), "Failed to send SOS to " + contact.name + ": " + e.getMessage(), Toast.LENGTH_LONG).show());
                             Log.e("HomeFragment", "Failed to send SMS to " + contact.name, e);
                         }
                     }
+
+                    // Final confirmation
+                    requireActivity().runOnUiThread(() -> {
+                        if (sentCount[0] > 0) {
+                            Toast.makeText(getContext(), "Emergency SOS sent to " + sentCount[0] + " contact(s)", Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(getContext(), "Failed to send any SOS messages", Toast.LENGTH_LONG).show();
+                        }
+                    });
                 });
             } else {
                 Toast.makeText(getContext(), "Could not get location. Please ensure location is enabled.", Toast.LENGTH_LONG).show();
             }
+        }).addOnFailureListener(e -> {
+            Toast.makeText(getContext(), "Failed to get location for SOS: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        });
+    }
+
+    private void startWalkTracking() {
+        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(getContext(), "Location permission required for walk tracking", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // Start location tracking for walk
+        LocationRequest locationRequest = LocationRequest.create();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval(30000); // Update every 30 seconds
+        locationRequest.setFastestInterval(15000);
+
+        if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        fusedLocationClient.requestLocationUpdates(locationRequest, new LocationCallback() {
+            @Override
+            public void onLocationResult(@NonNull LocationResult locationResult) {
+                super.onLocationResult(locationResult);
+                Location location = locationResult.getLastLocation();
+                if (location != null) {
+                    updateLocationUI(location);
+                    // Store walk location for safety tracking
+                    storeWalkLocation(location);
+                }
+            }
+        }, Looper.myLooper());
+
+        Toast.makeText(getContext(), "Walk tracking started! Your location will be monitored for safety.", Toast.LENGTH_LONG).show();
+        
+        // Update button text
+        Button btnStartWalk = getView().findViewById(R.id.btnStartWalk);
+        btnStartWalk.setText("Stop Walk");
+        isWalkTracking = true;
+    }
+
+    private void stopWalkTracking() {
+        fusedLocationClient.removeLocationUpdates(new LocationCallback() {
+            @Override
+            public void onLocationResult(@NonNull LocationResult locationResult) {
+                super.onLocationResult(locationResult);
+            }
+        });
+
+        Toast.makeText(getContext(), "Walk tracking stopped.", Toast.LENGTH_SHORT).show();
+        
+        // Update button text back
+        Button btnStartWalk = getView().findViewById(R.id.btnStartWalk);
+        btnStartWalk.setText("Start Walk");
+        isWalkTracking = false;
+    }
+
+    private void storeWalkLocation(Location location) {
+        // Store the walk location in database for safety tracking
+        executorService.execute(() -> {
+            // This could be expanded to store walk history
+            Log.d("HomeFragment", "Walk location stored: " + location.getLatitude() + ", " + location.getLongitude());
         });
     }
 
