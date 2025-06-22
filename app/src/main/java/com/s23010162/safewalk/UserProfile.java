@@ -10,6 +10,7 @@ public class UserProfile implements Serializable {
 
     private String fullName;
     private String emailAddress;
+    private String password;
     private String phoneNumber;
     private String emergencyPin;
     private boolean locationAccessEnabled;
@@ -37,6 +38,13 @@ public class UserProfile implements Serializable {
         this.isProfileComplete = true;
     }
 
+    // Constructor for EditProfileFragment
+    public UserProfile(String name, String email, String password) {
+        this.fullName = name;
+        this.emailAddress = email;
+        this.password = password;
+    }
+
     // Getters
     public String getFullName() {
         return fullName;
@@ -44,6 +52,10 @@ public class UserProfile implements Serializable {
 
     public String getEmailAddress() {
         return emailAddress;
+    }
+
+    public String getPassword() {
+        return password;
     }
 
     public String getPhoneNumber() {
@@ -77,6 +89,10 @@ public class UserProfile implements Serializable {
 
     public void setEmailAddress(String emailAddress) {
         this.emailAddress = emailAddress;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public void setPhoneNumber(String phoneNumber) {

@@ -10,6 +10,9 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
@@ -24,6 +27,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SafeWalk"
         tools:targetApi="31">
+
+        <!--
+             IMPORTANT: PASTE YOUR GOOGLE MAPS API KEY HERE
+        -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyAyLJVZUguUigbxWhEdefV3XophBIlr4ck" />
 
         <!-- OnboardingActivity with NoActionBar theme and launcher intent -->
         <activity
@@ -43,14 +53,21 @@
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize" />
 
-
-
+        <!-- Alert Activity -->
+        <activity
+            android:name=".AlertActivity"
+            android:theme="@style/Theme.Transparent" />
 
         <!-- MainActivity without launcher intent -->
         <activity
             android:name=".MainActivity"
             android:exported="false"
             android:theme="@style/AppTheme" />
+
+        <activity android:name=".AddEditContactActivity" />
+
+        <service android:name=".ShakeDetectorService" />
+        <service android:name=".RecordingService" />
 
     </application>
 

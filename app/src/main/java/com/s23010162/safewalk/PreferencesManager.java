@@ -31,6 +31,12 @@ public class PreferencesManager {
     private static final String KEY_IS_PROFILE_COMPLETE = "is_profile_complete";
     private static final String KEY_IS_FIRST_LAUNCH = "is_first_launch";
 
+    // Settings Keys
+    private static final String KEY_SHAKE_SENSITIVITY_ENABLED = "shake_sensitivity_enabled";
+    private static final String KEY_AUTO_RECORDING_ENABLED = "auto_recording_enabled";
+    private static final String KEY_LOCATION_TRACKING_ENABLED = "location_tracking_enabled";
+    private static final String KEY_OFFLINE_MODE_ENABLED = "offline_mode_enabled";
+
     private SharedPreferences sharedPreferences;
     private Context context;
 
@@ -65,6 +71,13 @@ public class PreferencesManager {
             e.printStackTrace();
             return false;
         }
+    }
+
+    /**
+     * Set user profile data (alias for saveUserProfile)
+     */
+    public void setUserProfile(UserProfile userProfile) {
+        saveUserProfile(userProfile);
     }
 
     /**
@@ -116,6 +129,18 @@ public class PreferencesManager {
     public boolean isProfileComplete() {
         return sharedPreferences.getBoolean(KEY_IS_PROFILE_COMPLETE, false);
     }
+
+    // --- Getters for new settings ---
+    public boolean isShakeDetectionEnabled() { return sharedPreferences.getBoolean(KEY_SHAKE_SENSITIVITY_ENABLED, true); }
+    public boolean isAutoRecordingEnabled() { return sharedPreferences.getBoolean(KEY_AUTO_RECORDING_ENABLED, true); }
+    public boolean isLocationTrackingEnabled() { return sharedPreferences.getBoolean(KEY_LOCATION_TRACKING_ENABLED, true); }
+    public boolean isOfflineModeEnabled() { return sharedPreferences.getBoolean(KEY_OFFLINE_MODE_ENABLED, false); }
+
+    // --- Setters for new settings ---
+    public void setShakeDetectionEnabled(boolean enabled) { sharedPreferences.edit().putBoolean(KEY_SHAKE_SENSITIVITY_ENABLED, enabled).apply(); }
+    public void setAutoRecordingEnabled(boolean enabled) { sharedPreferences.edit().putBoolean(KEY_AUTO_RECORDING_ENABLED, enabled).apply(); }
+    public void setLocationTrackingEnabled(boolean enabled) { sharedPreferences.edit().putBoolean(KEY_LOCATION_TRACKING_ENABLED, enabled).apply(); }
+    public void setOfflineModeEnabled(boolean enabled) { sharedPreferences.edit().putBoolean(KEY_OFFLINE_MODE_ENABLED, enabled).apply(); }
 
     /**
      * Clear all user data (for logout or reset)

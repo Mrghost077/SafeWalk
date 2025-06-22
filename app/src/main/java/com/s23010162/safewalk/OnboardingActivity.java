@@ -24,29 +24,21 @@ public class OnboardingActivity extends AppCompatActivity {
     private OnboardingPagerAdapter pagerAdapter;
     private int currentPage = 0;
 
-    private static final String PREFS_NAME = "SafeWalkPrefs";
-    private static final String KEY_FIRST_TIME = "first_time_user";
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        preferencesManager = new PreferencesManager(this);
+
         // Check if user has already seen onboarding
-        if (hasSeenOnboarding()) {
-            proceedToMainApp();
+        if (!preferencesManager.isFirstLaunch()) {
+            proceedToNextStep();
             return;
         }
 
         setupStatusBar();
-        preferencesManager = new PreferencesManager(this);
 
-// Check if user has already completed onboarding and registration
-        if (!preferencesManager.isFirstLaunch() && preferencesManager.isProfileComplete()) {
-            proceedToMainApp(); // Already exists
-            return;
-        }
-
-        setContentView(R.layout.activity_onboarding); // Keep after checking
+        setContentView(R.layout.activity_onboarding);
 
 
         initViews();
@@ -55,14 +47,20 @@ public class OnboardingActivity extends AppCompatActivity {
         setupPageChangeListener();
     }
 
-    private boolean hasSeenOnboarding() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        return !prefs.getBoolean(KEY_FIRST_TIME, true);
+    private void proceedToNextStep() {
+        // Onboarding is done, now check if registration is done
+        if (preferencesManager.isProfileComplete()) {
+            // Both are done, go to main app
+            startActivity(new Intent(this, MainActivity.class));
+        } else {
+            // Onboarding is done, but registration is not. Go to registration.
+            startActivity(new Intent(this, RegistrationActivity.class));
+        }
+        finish();
     }
 
     private void markOnboardingAsSeen() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        prefs.edit().putBoolean(KEY_FIRST_TIME, false).apply();
+        preferencesManager.setFirstLaunch(false);
     }
 
     private void setupStatusBar() {
@@ -102,15 +100,9 @@ public class OnboardingActivity extends AppCompatActivity {
         btnGetStarted.setOnClickListener(v -> {
             animateButton(v);
             markOnboardingAsSeen();
-
-            if (preferencesManager.isFirstLaunch() || !preferencesManager.isProfileComplete()) {
-                // Go to Registration
-                Intent intent = new Intent(OnboardingActivity.this, RegistrationActivity.class);
-                startActivity(intent);
-            } else {
-                proceedToMainApp();
-            }
-
+            // After onboarding, always go to registration
+            Intent intent = new Intent(OnboardingActivity.this, RegistrationActivity.class);
+            startActivity(intent);
             finish(); // Prevent going back to onboarding
         });
 
@@ -130,7 +122,10 @@ public class OnboardingActivity extends AppCompatActivity {
             public void onClick(View v) {
                 animateButton(v);
                 markOnboardingAsSeen();
-                proceedToMainApp();
+                // After onboarding, always go to registration
+                Intent intent = new Intent(OnboardingActivity.this, RegistrationActivity.class);
+                startActivity(intent);
+                finish();
             }
         });
     }

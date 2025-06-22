@@ -2,14 +2,11 @@ package com.s23010162.safewalk;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
-import android.widget.TextView;
-
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import androidx.navigation.NavController;
+import androidx.navigation.fragment.NavHostFragment;
+import androidx.navigation.ui.NavigationUI;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -21,48 +18,41 @@ public class MainActivity extends AppCompatActivity {
 
         preferencesManager = new PreferencesManager(this);
 
-        checkAppState();  // <--- smart launcher logic
-    }
-
-    private void checkAppState() {
-        if (preferencesManager.isFirstLaunch()) {
-            navigateToOnboarding();
-        } else if (!preferencesManager.isProfileComplete()) {
-            navigateToRegistration();
-        } else {
-            setupMainActivity(); // Load the actual UI
+        // Check the app state. Redirect if necessary.
+        if (!isSetupComplete()) {
+            return; // isSetupComplete will handle the redirect and finish this activity
         }
-    }
 
-    private void navigateToOnboarding() {
-        Intent intent = new Intent(this, OnboardingActivity.class);
-        startActivity(intent);
-        finish();
-    }
-
-    private void navigateToRegistration() {
-        Intent intent = new Intent(this, RegistrationActivity.class);
-        startActivity(intent);
-        finish();
-    }
-
-    private void setupMainActivity() {
-        // Enable full-screen layout with padding for system bars
-        EdgeToEdge.enable(this);
+        // If setup is complete, proceed to load the main UI
         setContentView(R.layout.activity_main);
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
+        BottomNavigationView navView = findViewById(R.id.bottom_nav_view);
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.nav_host_fragment);
+        NavController navController = navHostFragment.getNavController();
+        NavigationUI.setupWithNavController(navView, navController);
 
-        // Load and show user profile
-        UserProfile userProfile = preferencesManager.getUserProfile();
-        if (userProfile != null) {
-            TextView tvWelcome = findViewById(R.id.tvWelcome);
-            String welcomeText = "Welcome, " + userProfile.getFullName() + "!";
-            tvWelcome.setText(welcomeText);
+        // Start the shake detector service
+        Intent intent = new Intent(this, ShakeDetectorService.class);
+        startService(intent);
+    }
+
+    private boolean isSetupComplete() {
+        if (preferencesManager.isFirstLaunch()) {
+            // User hasn't even finished onboarding
+            startActivity(new Intent(this, OnboardingActivity.class));
+            finish();
+            return false;
         }
+
+        if (!preferencesManager.isProfileComplete()) {
+            // Onboarding is done, but registration is not
+            startActivity(new Intent(this, RegistrationActivity.class));
+            finish();
+            return false;
+        }
+
+        // Both onboarding and registration are complete
+        return true;
     }
 }

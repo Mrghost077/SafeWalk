@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_color"
+    tools:context=".SettingsFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="24dp"
+            android:text="Settings"
+            android:textColor="@color/primary_text_color"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            style="@style/SettingsSectionTitle"
+            android:text="General" />
+
+        <RelativeLayout
+            android:id="@+id/rlAlertHistory"
+            style="@style/SettingsItem.Clickable">
+            <TextView
+                style="@style/SettingsItemText"
+                android:text="Alert History" />
+            <TextView
+                style="@style/SettingsItemActionText"
+                android:text="View >" />
+        </RelativeLayout>
+        <View style="@style/Divider" />
+
+        <RelativeLayout
+            android:id="@+id/rlEditProfile"
+            style="@style/SettingsItem.Clickable">
+            <TextView
+                style="@style/SettingsItemText"
+                android:text="Edit Profile" />
+            <ImageView
+                style="@style/SettingsItemIcon"
+                android:src="@drawable/ic_arrow_forward" />
+        </RelativeLayout>
+        <View style="@style/Divider" />
+
+        <RelativeLayout
+            android:id="@+id/rlEmergencyContacts"
+            style="@style/SettingsItem.Clickable">
+            <TextView
+                style="@style/SettingsItemText"
+                android:text="Emergency Contacts" />
+            <ImageView
+                style="@style/SettingsItemIcon"
+                android:src="@drawable/ic_arrow_forward" />
+        </RelativeLayout>
+        <View style="@style/Divider" />
+
+        <TextView
+            style="@style/SettingsSectionTitle"
+            android:text="Preferences" />
+
+        <RelativeLayout style="@style/SettingsItem">
+            <TextView
+                style="@style/SettingsItemText"
+                android:text="Shake Sensitivity" />
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switchShake"
+                style="@style/SettingsSwitch" />
+        </RelativeLayout>
+        <View style="@style/Divider" />
+
+        <RelativeLayout style="@style/SettingsItem">
+            <TextView
+                style="@style/SettingsItemText"
+                android:text="Auto-Recording" />
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switchAutoRecording"
+                style="@style/SettingsSwitch" />
+        </RelativeLayout>
+        <View style="@style/Divider" />
+
+        <TextView
+            style="@style/SettingsSectionTitle"
+            android:text="Security" />
+
+        <RelativeLayout
+            android:id="@+id/rlEmergencyPin"
+            style="@style/SettingsItem.Clickable">
+            <TextView
+                style="@style/SettingsItemText"
+                android:text="Emergency PIN" />
+            <TextView
+                style="@style/SettingsItemActionText"
+                android:text="Change >" />
+        </RelativeLayout>
+        <View style="@style/Divider" />
+
+        <RelativeLayout style="@style/SettingsItem">
+            <TextView
+                style="@style/SettingsItemText"
+                android:text="Location Tracking" />
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switchLocationTracking"
+                style="@style/SettingsSwitch" />
+        </RelativeLayout>
+        <View style="@style/Divider" />
+
+        <RelativeLayout style="@style/SettingsItem">
+            <TextView
+                style="@style/SettingsItemText"
+                android:text="Offline Mode" />
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switchOfflineMode"
+                style="@style/SettingsSwitch" />
+        </RelativeLayout>
+        <View style="@style/Divider" />
+
+        <!-- System Settings -->
+        <RelativeLayout style="@style/SettingsItem.Clickable">
+            <TextView
+                style="@style/SettingsItemText"
+                android:text="Battery Optimization" />
+            <TextView
+                android:id="@+id/tvConfigureBattery"
+                style="@style/SettingsItemActionText"
+                android:text="Configure >" />
+        </RelativeLayout>
+        <View style="@style/Divider" />
+
+        <RelativeLayout style="@style/SettingsItem.Clickable">
+            <TextView
+                style="@style/SettingsItemText"
+                android:text="Data &amp; Privacy" />
+            <TextView
+                android:id="@+id/tvDataPrivacy"
+                style="@style/SettingsItemActionText"
+                android:text="View >" />
+        </RelativeLayout>
+        <View style="@style/Divider" />
+
+    </LinearLayout>
+</ScrollView> 
