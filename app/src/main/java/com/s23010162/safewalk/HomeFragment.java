@@ -72,6 +72,8 @@ public class HomeFragment extends Fragment {
         Button btnEmergencySos = view.findViewById(R.id.btnEmergencySos);
         Button btnStartWalk = view.findViewById(R.id.btnStartWalk);
         Button btnQuickRecord = view.findViewById(R.id.btnQuickRecord);
+        Button btnWalkHistory = view.findViewById(R.id.btnWalkHistory);
+        Button btnViewRecordings = view.findViewById(R.id.btnViewRecordings);
 
         btnEmergencySos.setOnClickListener(v -> {
             sendSmsToEmergencyContacts();
@@ -87,6 +89,12 @@ public class HomeFragment extends Fragment {
         btnQuickRecord.setOnClickListener(v -> {
             Navigation.findNavController(v).navigate(R.id.navigation_record);
         });
+
+        btnWalkHistory.setOnClickListener(v ->
+                Navigation.findNavController(v).navigate(R.id.navigation_walk_history));
+
+        btnViewRecordings.setOnClickListener(v ->
+                Navigation.findNavController(v).navigate(R.id.navigation_recordings_list));
 
         checkLocationPermission();
         updateSafetyStatus();

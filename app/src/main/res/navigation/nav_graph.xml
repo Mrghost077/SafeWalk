@@ -35,4 +35,9 @@
         android:name="com.s23010162.safewalk.WalkHistoryFragment"
         android:label="Walk History"
         tools:layout="@layout/fragment_walk_history" />
+    <fragment
+        android:id="@+id/navigation_recordings_list"
+        android:name="com.s23010162.safewalk.RecordingsListFragment"
+        android:label="Recordings"
+        tools:layout="@layout/fragment_recordings_list" />
 </navigation> 

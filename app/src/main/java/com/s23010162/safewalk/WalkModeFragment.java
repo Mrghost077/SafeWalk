@@ -27,14 +27,21 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
-public class WalkModeFragment extends Fragment {
+public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
 
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 2;
     private static final int SMS_PERMISSION_REQUEST_CODE = 102;
@@ -43,7 +50,10 @@ public class WalkModeFragment extends Fragment {
     private LocationCallback locationCallback;
     private Location lastKnownLocation;
 
-    private TextView tvLocationStatus, tvWalkStartedTime, tvDuration;
+    private MapView mapView;
+    private GoogleMap googleMap;
+
+    private TextView tvWalkStartedTime, tvDuration;
     private Button btnStopWalk, btnShareLocation, btnCheckIn;
 
     private Handler timerHandler = new Handler(Looper.getMainLooper());
@@ -60,35 +70,42 @@ public class WalkModeFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_walk_mode, container, false);
+        View view = inflater.inflate(R.layout.fragment_walk_mode, container, false);
+        mapView = view.findViewById(R.id.mapView);
+        mapView.onCreate(savedInstanceState);
+        mapView.getMapAsync(this);
+        return view;
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        tvLocationStatus = view.findViewById(R.id.tvLocationStatus);
         tvWalkStartedTime = view.findViewById(R.id.tvWalkStartedTime);
         tvDuration = view.findViewById(R.id.tvDuration);
         btnStopWalk = view.findViewById(R.id.btnWalkModeActive);
         btnShareLocation = view.findViewById(R.id.btnShareLocation);
         btnCheckIn = view.findViewById(R.id.btnCheckIn);
-
         setupUI();
         checkLocationPermissionAndStartTracking();
     }
 
+    @Override
+    public void onMapReady(@NonNull GoogleMap map) {
+        googleMap = map;
+        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            googleMap.setMyLocationEnabled(true);
+        }
+        googleMap.getUiSettings().setMyLocationButtonEnabled(true);
+    }
+
     private void setupUI() {
         tvWalkStartedTime.setText(new SimpleDateFormat("hh:mm a", Locale.getDefault()).format(new Date(startTime)));
-
         btnStopWalk.setOnClickListener(v -> {
             stopLocationUpdates();
             NavHostFragment.findNavController(this).navigateUp();
         });
-
         btnShareLocation.setOnClickListener(v -> shareLocation());
         btnCheckIn.setOnClickListener(v -> checkIn());
-
         startDurationTimer();
     }
 
@@ -119,23 +136,29 @@ public class WalkModeFragment extends Fragment {
         locationRequest.setInterval(30000);
         locationRequest.setFastestInterval(15000);
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-
         locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(@NonNull LocationResult locationResult) {
                 if (locationResult.getLastLocation() != null) {
                     lastKnownLocation = locationResult.getLastLocation();
-                    tvLocationStatus.setText("Location updated at " + new SimpleDateFormat("hh:mm:ss a", Locale.getDefault()).format(new Date()));
+                    updateMapLocation();
                     Log.d("WalkModeFragment", "Location: " + lastKnownLocation.getLatitude() + ", " + lastKnownLocation.getLongitude());
                 }
             }
         };
-
         if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
         fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
-        tvLocationStatus.setText("Live tracking active...");
+    }
+
+    private void updateMapLocation() {
+        if (googleMap != null && lastKnownLocation != null) {
+            LatLng currentLatLng = new LatLng(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
+            googleMap.clear(); // Clear previous markers
+            googleMap.addMarker(new MarkerOptions().position(currentLatLng).title("My Location"));
+            googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 16));
+        }
     }
 
     private void stopLocationUpdates() {
@@ -152,12 +175,10 @@ public class WalkModeFragment extends Fragment {
     private void saveWalkToDatabase() {
         long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;
-
         Walk walk = new Walk();
         walk.startTime = startTime;
         walk.endTime = endTime;
         walk.duration = duration;
-
         AppExecutors.getInstance().diskIO().execute(() -> {
             AppDatabase.getDatabase(requireContext()).walkDao().insert(walk);
             Log.d("WalkModeFragment", "Walk saved to database.");
@@ -179,25 +200,24 @@ public class WalkModeFragment extends Fragment {
             executeSendSms(prefix);
         }
     }
-    
+
     private void executeSendSms(String prefix) {
         if (lastKnownLocation == null) {
             Toast.makeText(getContext(), "Location not available yet. Please wait.", Toast.LENGTH_SHORT).show();
             return;
         }
-
         AppExecutors.getInstance().diskIO().execute(() -> {
             List<EmergencyContact> contacts = AppDatabase.getDatabase(requireContext()).emergencyContactDao().getAll();
             if (contacts.isEmpty()) {
                 requireActivity().runOnUiThread(() -> Toast.makeText(getContext(), "No emergency contacts to share with.", Toast.LENGTH_SHORT).show());
                 return;
             }
-
             String message = prefix + "http://maps.google.com/maps?q=" + lastKnownLocation.getLatitude() + "," + lastKnownLocation.getLongitude();
             SmsManager smsManager = SmsManager.getDefault();
+            ArrayList<String> parts = smsManager.divideMessage(message);
             for (EmergencyContact contact : contacts) {
                 try {
-                    smsManager.sendTextMessage(contact.phoneNumber, null, message, null, null);
+                    smsManager.sendMultipartTextMessage(contact.phoneNumber, null, parts, null, null);
                 } catch (Exception e) {
                     Log.e("WalkModeFragment", "Failed to send SMS to " + contact.name, e);
                 }
@@ -212,6 +232,12 @@ public class WalkModeFragment extends Fragment {
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startLocationUpdates();
+                if (googleMap != null) {
+                    if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        return;
+                    }
+                    googleMap.setMyLocationEnabled(true);
+                }
             } else {
                 Toast.makeText(getContext(), "Location permission is required for Walk Mode.", Toast.LENGTH_LONG).show();
                 NavHostFragment.findNavController(this).navigateUp();
@@ -226,8 +252,51 @@ public class WalkModeFragment extends Fragment {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        mapView.onResume();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        mapView.onStart();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        mapView.onStop();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        mapView.onPause();
+    }
+
+    @Override
     public void onDestroyView() {
         super.onDestroyView();
         stopLocationUpdates();
+        if (googleMap != null) {
+            if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
+            googleMap.setMyLocationEnabled(false);
+        }
+        mapView.onDestroy();
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        mapView.onLowMemory();
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        mapView.onSaveInstanceState(outState);
     }
 } 

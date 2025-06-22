@@ -25,9 +25,6 @@ public class SettingsFragment extends Fragment {
         view.findViewById(R.id.btnManageEmergencyContacts).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.navigation_contacts));
 
-        view.findViewById(R.id.btnWalkHistory).setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.navigation_walk_history));
-
         view.findViewById(R.id.btnPrivacyPolicy).setOnClickListener(v ->
                 Toast.makeText(getContext(), "Privacy Policy clicked", Toast.LENGTH_SHORT).show());
     }
