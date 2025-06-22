@@ -1,17 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginVertical="8dp"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     app:cardCornerRadius="8dp"
-    app:cardElevation="4dp">
+    app:cardElevation="4dp"
+    android:layout_marginStart="8dp"
+    android:layout_marginEnd="8dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="4dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_walk"
+            app:tint="@color/primary_color"
+            android:layout_marginEnd="16dp"/>
 
         <LinearLayout
             android:layout_width="0dp"
@@ -20,31 +31,22 @@
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/tvRecordingName"
+                android:id="@+id/tvWalkDate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Recording_20240520_1030.mp4"
+                android:text="Date: Mon, 20 May 2024"
                 android:textStyle="bold"
                 android:textColor="@color/primary_text_color"
                 android:textSize="16sp"/>
 
             <TextView
-                android:id="@+id/tvRecordingTimestamp"
+                android:id="@+id/tvWalkDuration"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="May 20, 2024 - 10:30"
+                android:text="Duration: 15:30"
                 android:textColor="@color/secondary_text_color"
                 android:layout_marginTop="4dp"/>
 
         </LinearLayout>
-
-        <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp"
-            android:src="@drawable/ic_play_arrow"
-            android:contentDescription="@string/play_icon_description" />
-
     </LinearLayout>
 </androidx.cardview.widget.CardView> 

@@ -32,6 +32,7 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -79,11 +80,8 @@ public class HomeFragment extends Fragment {
         });
 
         btnStartWalk.setOnClickListener(v -> {
-            if (!isWalkTracking) {
-                startWalkTracking();
-            } else {
-                stopWalkTracking();
-            }
+            // Navigate to WalkModeFragment
+            Navigation.findNavController(v).navigate(R.id.navigation_walk_mode);
         });
 
         btnQuickRecord.setOnClickListener(v -> {
@@ -180,10 +178,12 @@ public class HomeFragment extends Fragment {
     private void sendSmsToEmergencyContacts() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(requireActivity(), new String[]{Manifest.permission.SEND_SMS}, 101);
-            Toast.makeText(getContext(), "SMS permission required for emergency alerts", Toast.LENGTH_LONG).show();
-            return;
+        } else {
+            sendSmsLogic();
         }
+    }
 
+    private void sendSmsLogic() {
         fusedLocationClient.getLastLocation().addOnSuccessListener(requireActivity(), location -> {
             if (location != null) {
                 AppExecutors.getInstance().diskIO().execute(() -> {
@@ -200,14 +200,10 @@ public class HomeFragment extends Fragment {
 
                     for (EmergencyContact contact : contacts) {
                         try {
-                            // Split long messages if needed
-                            List<String> parts = smsManager.divideMessage(message);
-                            for (String part : parts) {
-                                smsManager.sendTextMessage(contact.phoneNumber, null, part, null, null);
-                            }
+                            ArrayList<String> parts = smsManager.divideMessage(message);
+                            smsManager.sendMultipartTextMessage(contact.phoneNumber, null, parts, null, null);
                             sentCount[0]++;
-                            requireActivity().runOnUiThread(() ->
-                                Toast.makeText(getContext(), "SOS sent to " + contact.name, Toast.LENGTH_SHORT).show());
+                            Log.d("HomeFragment", "SOS sent to " + contact.name);
                         } catch (Exception e) {
                             requireActivity().runOnUiThread(() ->
                                 Toast.makeText(getContext(), "Failed to send SOS to " + contact.name + ": " + e.getMessage(), Toast.LENGTH_LONG).show());
@@ -215,81 +211,20 @@ public class HomeFragment extends Fragment {
                         }
                     }
 
-                    // Final confirmation
                     requireActivity().runOnUiThread(() -> {
                         if (sentCount[0] > 0) {
-                            Toast.makeText(getContext(), "Emergency SOS sent to " + sentCount[0] + " contact(s)", Toast.LENGTH_LONG).show();
+                            Toast.makeText(getContext(), "Emergency SOS sent to " + sentCount[0] + " contact(s).", Toast.LENGTH_LONG).show();
                         } else {
-                            Toast.makeText(getContext(), "Failed to send any SOS messages", Toast.LENGTH_LONG).show();
+                            Toast.makeText(getContext(), "Failed to send any SOS messages.", Toast.LENGTH_LONG).show();
                         }
                     });
                 });
             } else {
-                Toast.makeText(getContext(), "Could not get location. Please ensure location is enabled.", Toast.LENGTH_LONG).show();
+                Toast.makeText(getContext(), "Could not get location to send SOS. Please enable location.", Toast.LENGTH_LONG).show();
             }
         }).addOnFailureListener(e -> {
             Toast.makeText(getContext(), "Failed to get location for SOS: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        });
-    }
-
-    private void startWalkTracking() {
-        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(getContext(), "Location permission required for walk tracking", Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        // Start location tracking for walk
-        LocationRequest locationRequest = LocationRequest.create();
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        locationRequest.setInterval(30000); // Update every 30 seconds
-        locationRequest.setFastestInterval(15000);
-
-        if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-
-        fusedLocationClient.requestLocationUpdates(locationRequest, new LocationCallback() {
-            @Override
-            public void onLocationResult(@NonNull LocationResult locationResult) {
-                super.onLocationResult(locationResult);
-                Location location = locationResult.getLastLocation();
-                if (location != null) {
-                    updateLocationUI(location);
-                    // Store walk location for safety tracking
-                    storeWalkLocation(location);
-                }
-            }
-        }, Looper.myLooper());
-
-        Toast.makeText(getContext(), "Walk tracking started! Your location will be monitored for safety.", Toast.LENGTH_LONG).show();
-        
-        // Update button text
-        Button btnStartWalk = getView().findViewById(R.id.btnStartWalk);
-        btnStartWalk.setText("Stop Walk");
-        isWalkTracking = true;
-    }
-
-    private void stopWalkTracking() {
-        fusedLocationClient.removeLocationUpdates(new LocationCallback() {
-            @Override
-            public void onLocationResult(@NonNull LocationResult locationResult) {
-                super.onLocationResult(locationResult);
-            }
-        });
-
-        Toast.makeText(getContext(), "Walk tracking stopped.", Toast.LENGTH_SHORT).show();
-        
-        // Update button text back
-        Button btnStartWalk = getView().findViewById(R.id.btnStartWalk);
-        btnStartWalk.setText("Start Walk");
-        isWalkTracking = false;
-    }
-
-    private void storeWalkLocation(Location location) {
-        // Store the walk location in database for safety tracking
-        executorService.execute(() -> {
-            // This could be expanded to store walk history
-            Log.d("HomeFragment", "Walk location stored: " + location.getLatitude() + ", " + location.getLongitude());
+            Log.e("HomeFragment", "Failed to get location for SOS", e);
         });
     }
 
@@ -302,6 +237,13 @@ public class HomeFragment extends Fragment {
             } else {
                 tvCurrentLocation.setText("Location permission denied.");
                 Toast.makeText(getContext(), "Location permission is required to show current location.", Toast.LENGTH_LONG).show();
+            }
+        } else if (requestCode == 101) { // SMS permission
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(getContext(), "SMS permission granted. Sending SOS...", Toast.LENGTH_SHORT).show();
+                sendSmsLogic();
+            } else {
+                Toast.makeText(getContext(), "SMS permission denied. SOS alerts will not be sent.", Toast.LENGTH_LONG).show();
             }
         }
     }

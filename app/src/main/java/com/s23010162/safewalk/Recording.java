@@ -1,19 +1,21 @@
 package com.s23010162.safewalk;
 
-public class Recording {
-    private String name;
-    private long dateAdded;
+import androidx.room.Entity;
+import androidx.room.PrimaryKey;
 
-    public Recording(String name, long dateAdded) {
-        this.name = name;
-        this.dateAdded = dateAdded;
-    }
+import java.io.File;
+
+@Entity(tableName = "recordings")
+public class Recording {
+    @PrimaryKey(autoGenerate = true)
+    public int id;
+    public String filePath;
+    public long timestamp;
 
     public String getName() {
-        return name;
-    }
-
-    public long getDateAdded() {
-        return dateAdded;
+        if (filePath == null || filePath.isEmpty()) {
+            return "Recording";
+        }
+        return new File(filePath).getName();
     }
 } 

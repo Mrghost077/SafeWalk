@@ -23,6 +23,16 @@
     <fragment
         android:id="@+id/navigation_settings"
         android:name="com.s23010162.safewalk.SettingsFragment"
-        android:label="fragment_settings"
+        android:label="@string/title_settings"
         tools:layout="@layout/fragment_settings" />
+    <fragment
+        android:id="@+id/navigation_walk_mode"
+        android:name="com.s23010162.safewalk.WalkModeFragment"
+        android:label="Walk Mode"
+        tools:layout="@layout/fragment_walk_mode" />
+    <fragment
+        android:id="@+id/navigation_walk_history"
+        android:name="com.s23010162.safewalk.WalkHistoryFragment"
+        android:label="Walk History"
+        tools:layout="@layout/fragment_walk_history" />
 </navigation> 

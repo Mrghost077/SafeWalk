@@ -1,13 +1,18 @@
 package com.s23010162.safewalk;
 
+import androidx.room.Entity;
+import androidx.room.PrimaryKey;
 import java.io.Serializable;
 
 /**
  * User Profile data model class
  * Implements Serializable for easy data passing between activities
  */
+@Entity(tableName = "user_profile")
 public class UserProfile implements Serializable {
 
+    @PrimaryKey(autoGenerate = true)
+    public int id;
     private String fullName;
     private String emailAddress;
     private String password;

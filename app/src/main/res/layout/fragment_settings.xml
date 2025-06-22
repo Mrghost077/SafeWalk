@@ -145,5 +145,25 @@
         </RelativeLayout>
         <View style="@style/Divider" />
 
+        <Button
+            android:id="@+id/btnManageEmergencyContacts"
+            style="@style/SettingsButton"
+            android:text="Manage EmergencyContacts" />
+
+        <Button
+            android:id="@+id/btnWalkHistory"
+            style="@style/SettingsButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="View Walk History"
+            android:background="@drawable/button_secondary"
+            android:textColor="@android:color/white"/>
+
+        <Button
+            android:id="@+id/btnPrivacyPolicy"
+            style="@style/SettingsButton"
+            android:text="Privacy Policy" />
+
     </LinearLayout>
 </ScrollView> 

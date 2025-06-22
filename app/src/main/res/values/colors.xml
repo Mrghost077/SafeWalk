@@ -28,4 +28,6 @@
     <color name="error_color">#F44336</color>
     <color name="warning_color">#FF9800</color>
     <color name="warning_color_light">#FFFBEA</color>
+
+    <color name="divider_color">#E0E0E0</color>
 </resources>

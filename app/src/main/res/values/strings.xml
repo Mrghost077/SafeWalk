@@ -33,4 +33,17 @@
     <string name="exit_registration_message">Are you sure you want to exit? Your progress will be lost.</string>
     <string name="exit">Exit</string>
     <string name="continue_text">Continue</string>
+
+    <string name="title_home">Home</string>
+    <string name="title_contacts">Contacts</string>
+    <string name="title_record">Record</string>
+    <string name="title_settings">Settings</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title_1">Welcome to SafeWalk</string>
+
+    <!-- General -->
+    <string name="play_icon_description">Play recording icon</string>
+    <string name="title_activity_kimera">KimeraActivity</string>
+    <string name="dummy_button">Dummy Button</string>
 </resources>

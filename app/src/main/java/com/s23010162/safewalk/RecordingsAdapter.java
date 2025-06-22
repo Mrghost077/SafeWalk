@@ -31,12 +31,17 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Re
     public void onBindViewHolder(@NonNull RecordingViewHolder holder, int position) {
         Recording recording = recordings.get(position);
         holder.tvName.setText(recording.getName());
-        holder.tvDate.setText(dateFormat.format(new Date(recording.getDateAdded() * 1000)));
+        holder.tvTimestamp.setText(formatTimestamp(recording.timestamp));
     }
 
     @Override
     public int getItemCount() {
         return recordings.size();
+    }
+
+    private String formatTimestamp(long timestamp) {
+        SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy - HH:mm", Locale.getDefault());
+        return sdf.format(new Date(timestamp));
     }
 
     public void setRecordings(List<Recording> recordings) {
@@ -46,12 +51,12 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Re
 
     static class RecordingViewHolder extends RecyclerView.ViewHolder {
         TextView tvName;
-        TextView tvDate;
+        TextView tvTimestamp;
 
         public RecordingViewHolder(@NonNull View itemView) {
             super(itemView);
             tvName = itemView.findViewById(R.id.tvRecordingName);
-            tvDate = itemView.findViewById(R.id.tvRecordingDate);
+            tvTimestamp = itemView.findViewById(R.id.tvRecordingTimestamp);
         }
     }
 } 
