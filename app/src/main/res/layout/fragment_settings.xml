@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_color"
-    tools:context=".SettingsFragment">
+    android:background="@color/background_color">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -15,145 +13,158 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginBottom="24dp"
             android:text="Settings"
-            android:textColor="@color/primary_text_color"
             android:textSize="24sp"
-            android:textStyle="bold" />
-
-        <TextView
-            style="@style/SettingsSectionTitle"
-            android:text="General" />
-
-        <RelativeLayout
-            android:id="@+id/rlAlertHistory"
-            style="@style/SettingsItem.Clickable">
-            <TextView
-                style="@style/SettingsItemText"
-                android:text="Alert History" />
-            <TextView
-                style="@style/SettingsItemActionText"
-                android:text="View >" />
-        </RelativeLayout>
-        <View style="@style/Divider" />
-
-        <RelativeLayout
-            android:id="@+id/rlEditProfile"
-            style="@style/SettingsItem.Clickable">
-            <TextView
-                style="@style/SettingsItemText"
-                android:text="Edit Profile" />
-            <ImageView
-                style="@style/SettingsItemIcon"
-                android:src="@drawable/ic_arrow_forward" />
-        </RelativeLayout>
-        <View style="@style/Divider" />
-
-        <RelativeLayout
-            android:id="@+id/rlEmergencyContacts"
-            style="@style/SettingsItem.Clickable">
-            <TextView
-                style="@style/SettingsItemText"
-                android:text="Emergency Contacts" />
-            <ImageView
-                style="@style/SettingsItemIcon"
-                android:src="@drawable/ic_arrow_forward" />
-        </RelativeLayout>
-        <View style="@style/Divider" />
-
-        <TextView
-            style="@style/SettingsSectionTitle"
-            android:text="Preferences" />
-
-        <RelativeLayout style="@style/SettingsItem">
-            <TextView
-                style="@style/SettingsItemText"
-                android:text="Shake Sensitivity" />
-            <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/switchShake"
-                style="@style/SettingsSwitch" />
-        </RelativeLayout>
-        <View style="@style/Divider" />
-
-        <RelativeLayout style="@style/SettingsItem">
-            <TextView
-                style="@style/SettingsItemText"
-                android:text="Auto-Recording" />
-            <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/switchAutoRecording"
-                style="@style/SettingsSwitch" />
-        </RelativeLayout>
-        <View style="@style/Divider" />
-
-        <TextView
-            style="@style/SettingsSectionTitle"
-            android:text="Security" />
-
-        <RelativeLayout
-            android:id="@+id/rlEmergencyPin"
-            style="@style/SettingsItem.Clickable">
-            <TextView
-                style="@style/SettingsItemText"
-                android:text="Emergency PIN" />
-            <TextView
-                style="@style/SettingsItemActionText"
-                android:text="Change >" />
-        </RelativeLayout>
-        <View style="@style/Divider" />
-
-        <RelativeLayout style="@style/SettingsItem">
-            <TextView
-                style="@style/SettingsItemText"
-                android:text="Location Tracking" />
-            <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/switchLocationTracking"
-                style="@style/SettingsSwitch" />
-        </RelativeLayout>
-        <View style="@style/Divider" />
-
-        <RelativeLayout style="@style/SettingsItem">
-            <TextView
-                style="@style/SettingsItemText"
-                android:text="Offline Mode" />
-            <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/switchOfflineMode"
-                style="@style/SettingsSwitch" />
-        </RelativeLayout>
-        <View style="@style/Divider" />
-
-        <!-- System Settings -->
-        <RelativeLayout style="@style/SettingsItem.Clickable">
-            <TextView
-                style="@style/SettingsItemText"
-                android:text="Battery Optimization" />
-            <TextView
-                android:id="@+id/tvConfigureBattery"
-                style="@style/SettingsItemActionText"
-                android:text="Configure >" />
-        </RelativeLayout>
-        <View style="@style/Divider" />
-
-        <RelativeLayout style="@style/SettingsItem.Clickable">
-            <TextView
-                style="@style/SettingsItemText"
-                android:text="Data &amp; Privacy" />
-            <TextView
-                android:id="@+id/tvDataPrivacy"
-                style="@style/SettingsItemActionText"
-                android:text="View >" />
-        </RelativeLayout>
-        <View style="@style/Divider" />
+            android:textStyle="bold"
+            android:textColor="@color/primary_text_color"
+            android:layout_marginBottom="24dp"/>
 
         <Button
-            android:id="@+id/btnManageEmergencyContacts"
-            style="@style/SettingsButton"
-            android:text="Manage EmergencyContacts" />
+            android:id="@+id/btnNavEditProfile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Edit Profile"
+            style="@style/SettingsButton"/>
 
         <Button
-            android:id="@+id/btnPrivacyPolicy"
-            style="@style/SettingsButton"
-            android:text="Privacy Policy" />
+            android:id="@+id/btnNavManageContacts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Manage Emergency Contacts"
+            style="@style/SettingsButton"/>
+
+        <Button
+            android:id="@+id/btnNavPrivacyPolicy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Privacy Policy"
+            style="@style/SettingsButton"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider_color"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="24dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="App Features"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/primary_text_color"
+            android:layout_marginBottom="16dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Shake Sensitivity"
+                android:textColor="@color/primary_text_color"
+                android:textSize="16sp"/>
+
+            <Switch
+                android:id="@+id/switchShakeSensitivity"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Background Location"
+                android:textColor="@color/primary_text_color"
+                android:textSize="16sp"/>
+
+            <Switch
+                android:id="@+id/switchBackgroundLocation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Auto-Record on SOS"
+                android:textColor="@color/primary_text_color"
+                android:textSize="16sp"/>
+
+            <Switch
+                android:id="@+id/switchAutoRecord"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Vibrate on Alert"
+                android:textColor="@color/primary_text_color"
+                android:textSize="16sp"/>
+
+            <Switch
+                android:id="@+id/switchVibrate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Sound Alerts"
+                android:textColor="@color/primary_text_color"
+                android:textSize="16sp"/>
+
+            <Switch
+                android:id="@+id/switchSoundAlerts"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"/>
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView> 

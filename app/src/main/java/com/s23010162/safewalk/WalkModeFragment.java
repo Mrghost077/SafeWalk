@@ -1,9 +1,11 @@
 package com.s23010162.safewalk;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.telephony.SmsManager;
@@ -17,6 +19,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -54,11 +57,12 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
     private GoogleMap googleMap;
 
     private TextView tvWalkStartedTime, tvDuration;
-    private Button btnStopWalk, btnShareLocation, btnCheckIn;
+    private Button btnStopWalk, btnShareLocation, btnCheckIn, btnEmergencyFromWalk;
 
     private Handler timerHandler = new Handler(Looper.getMainLooper());
     private Runnable timerRunnable;
     private long startTime;
+    private CountDownTimer sosCountDownTimer;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -85,6 +89,7 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
         btnStopWalk = view.findViewById(R.id.btnWalkModeActive);
         btnShareLocation = view.findViewById(R.id.btnShareLocation);
         btnCheckIn = view.findViewById(R.id.btnCheckIn);
+        btnEmergencyFromWalk = view.findViewById(R.id.btnEmergencyFromWalk);
         setupUI();
         checkLocationPermissionAndStartTracking();
     }
@@ -106,6 +111,7 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
         });
         btnShareLocation.setOnClickListener(v -> shareLocation());
         btnCheckIn.setOnClickListener(v -> checkIn());
+        btnEmergencyFromWalk.setOnClickListener(v -> showSosCountdown());
         startDurationTimer();
     }
 
@@ -226,6 +232,42 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
         });
     }
 
+    private void showSosCountdown() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        LayoutInflater inflater = requireActivity().getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_sos_countdown, null);
+        builder.setView(dialogView);
+        builder.setCancelable(false);
+
+        final AlertDialog dialog = builder.create();
+        dialog.show();
+
+        final TextView tvCountdown = dialogView.findViewById(R.id.tvCountdown);
+        Button btnCancelSos = dialogView.findViewById(R.id.btnCancelSos);
+
+        sosCountDownTimer = new CountDownTimer(5000, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                tvCountdown.setText(String.valueOf(millisUntilFinished / 1000));
+            }
+
+            @Override
+            public void onFinish() {
+                dialog.dismiss();
+                // We don't call sendSms directly, we just launch the alert activity which handles it
+                Intent intent = new Intent(getActivity(), AlertActivity.class);
+                startActivity(intent);
+                stopLocationUpdates(); // End the walk mode
+            }
+        }.start();
+
+        btnCancelSos.setOnClickListener(v -> {
+            sosCountDownTimer.cancel();
+            dialog.dismiss();
+            Toast.makeText(getContext(), "SOS Canceled", Toast.LENGTH_SHORT).show();
+        });
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -284,6 +326,9 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
                 return;
             }
             googleMap.setMyLocationEnabled(false);
+        }
+        if(sosCountDownTimer != null) {
+            sosCountDownTimer.cancel();
         }
         mapView.onDestroy();
     }

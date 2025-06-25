@@ -8,36 +8,66 @@
     <fragment
         android:id="@+id/navigation_home"
         android:name="com.s23010162.safewalk.HomeFragment"
-        android:label="fragment_home"
-        tools:layout="@layout/fragment_home" />
+        android:label="@string/title_home"
+        tools:layout="@layout/fragment_home" >
+        <action
+            android:id="@+id/action_home_to_walk_mode"
+            app:destination="@id/navigation_walk_mode" />
+        <action
+            android:id="@+id/action_home_to_recordings_list"
+            app:destination="@id/navigation_recordings_list" />
+        <action
+            android:id="@+id/action_home_to_record"
+            app:destination="@id/navigation_record" />
+    </fragment>
+
     <fragment
         android:id="@+id/navigation_contacts"
-        android:name="com.s23010162.safewalk.ContactsFragment"
-        android:label="fragment_contacts"
-        tools:layout="@layout/fragment_contacts" />
+        android:name="com.s23010162.safewalk.EmergencyContactsFragment"
+        android:label="@string/title_contacts"
+        tools:layout="@layout/fragment_emergency_contacts" />
+
     <fragment
-        android:id="@+id/navigation_record"
-        android:name="com.s23010162.safewalk.RecordFragment"
-        android:label="fragment_record"
-        tools:layout="@layout/fragment_record" />
+        android:id="@+id/navigation_history"
+        android:name="com.s23010162.safewalk.HistoryFragment"
+        android:label="@string/title_history"
+        tools:layout="@layout/fragment_history" />
+
     <fragment
         android:id="@+id/navigation_settings"
         android:name="com.s23010162.safewalk.SettingsFragment"
         android:label="@string/title_settings"
-        tools:layout="@layout/fragment_settings" />
+        tools:layout="@layout/fragment_settings" >
+        <action
+            android:id="@+id/action_settings_to_edit_profile"
+            app:destination="@id/navigation_edit_profile" />
+        <action
+            android:id="@+id/action_settings_to_contacts"
+            app:destination="@id/navigation_contacts" />
+    </fragment>
+
     <fragment
         android:id="@+id/navigation_walk_mode"
         android:name="com.s23010162.safewalk.WalkModeFragment"
         android:label="Walk Mode"
         tools:layout="@layout/fragment_walk_mode" />
+
     <fragment
-        android:id="@+id/navigation_walk_history"
-        android:name="com.s23010162.safewalk.WalkHistoryFragment"
-        android:label="Walk History"
-        tools:layout="@layout/fragment_walk_history" />
+        android:id="@+id/navigation_edit_profile"
+        android:name="com.s23010162.safewalk.EditProfileFragment"
+        android:label="Edit Profile"
+        tools:layout="@layout/fragment_edit_profile" />
+
     <fragment
         android:id="@+id/navigation_recordings_list"
         android:name="com.s23010162.safewalk.RecordingsListFragment"
-        android:label="Recordings"
+        android:label="@string/title_recordings_list"
         tools:layout="@layout/fragment_recordings_list" />
+
+    <fragment
+        android:id="@+id/navigation_record"
+        android:name="com.s23010162.safewalk.RecordFragment"
+        android:label="Record"
+        tools:layout="@layout/fragment_record" />
+
 </navigation> 

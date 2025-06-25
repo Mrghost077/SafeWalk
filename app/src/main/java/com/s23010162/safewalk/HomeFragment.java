@@ -7,6 +7,7 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Looper;
 import android.telephony.SmsManager;
 import android.util.Log;
@@ -19,6 +20,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -47,7 +49,7 @@ public class HomeFragment extends Fragment {
     private TextView tvSafetyStatusDetails;
     private AppDatabase appDatabase;
     private ExecutorService executorService;
-    private boolean isWalkTracking = false;
+    private CountDownTimer sosCountDownTimer;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -72,26 +74,19 @@ public class HomeFragment extends Fragment {
         Button btnEmergencySos = view.findViewById(R.id.btnEmergencySos);
         Button btnStartWalk = view.findViewById(R.id.btnStartWalk);
         Button btnQuickRecord = view.findViewById(R.id.btnQuickRecord);
-        Button btnWalkHistory = view.findViewById(R.id.btnWalkHistory);
         Button btnViewRecordings = view.findViewById(R.id.btnViewRecordings);
 
         btnEmergencySos.setOnClickListener(v -> {
-            sendSmsToEmergencyContacts();
-            Intent intent = new Intent(getActivity(), AlertActivity.class);
-            startActivity(intent);
+            showSosCountdown();
         });
 
         btnStartWalk.setOnClickListener(v -> {
-            // Navigate to WalkModeFragment
-            Navigation.findNavController(v).navigate(R.id.navigation_walk_mode);
+            Navigation.findNavController(v).navigate(R.id.action_home_to_walk_mode);
         });
 
         btnQuickRecord.setOnClickListener(v -> {
             Navigation.findNavController(v).navigate(R.id.navigation_record);
         });
-
-        btnWalkHistory.setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.navigation_walk_history));
 
         btnViewRecordings.setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.navigation_recordings_list));
@@ -183,6 +178,41 @@ public class HomeFragment extends Fragment {
         });
     }
 
+    private void showSosCountdown() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        LayoutInflater inflater = requireActivity().getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_sos_countdown, null);
+        builder.setView(dialogView);
+        builder.setCancelable(false);
+
+        final AlertDialog dialog = builder.create();
+        dialog.show();
+
+        final TextView tvCountdown = dialogView.findViewById(R.id.tvCountdown);
+        Button btnCancelSos = dialogView.findViewById(R.id.btnCancelSos);
+
+        sosCountDownTimer = new CountDownTimer(5000, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                tvCountdown.setText(String.valueOf(millisUntilFinished / 1000));
+            }
+
+            @Override
+            public void onFinish() {
+                dialog.dismiss();
+                sendSmsToEmergencyContacts();
+                Intent intent = new Intent(getActivity(), AlertActivity.class);
+                startActivity(intent);
+            }
+        }.start();
+
+        btnCancelSos.setOnClickListener(v -> {
+            sosCountDownTimer.cancel();
+            dialog.dismiss();
+            Toast.makeText(getContext(), "SOS Canceled", Toast.LENGTH_SHORT).show();
+        });
+    }
+
     private void sendSmsToEmergencyContacts() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(requireActivity(), new String[]{Manifest.permission.SEND_SMS}, 101);
@@ -192,6 +222,11 @@ public class HomeFragment extends Fragment {
     }
 
     private void sendSmsLogic() {
+        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(getContext(), "Location permission not granted", Toast.LENGTH_LONG).show();
+            return;
+        }
         fusedLocationClient.getLastLocation().addOnSuccessListener(requireActivity(), location -> {
             if (location != null) {
                 AppExecutors.getInstance().diskIO().execute(() -> {
@@ -261,6 +296,9 @@ public class HomeFragment extends Fragment {
         super.onDestroy();
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
+        }
+        if (sosCountDownTimer != null) {
+            sosCountDownTimer.cancel();
         }
     }
 } 

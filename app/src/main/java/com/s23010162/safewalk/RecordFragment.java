@@ -26,6 +26,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.fragment.NavHostFragment;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -65,6 +66,8 @@ public class RecordFragment extends Fragment {
         }
     };
 
+    private Recording currentRecording;
+    private AppDatabase appDatabase;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -80,6 +83,7 @@ public class RecordFragment extends Fragment {
         btnRecord = view.findViewById(R.id.btnRecord);
 
         cameraExecutor = Executors.newSingleThreadExecutor();
+        appDatabase = AppDatabase.getDatabase(requireContext());
 
         if (allPermissionsGranted()) {
             startCamera();
@@ -101,6 +105,12 @@ public class RecordFragment extends Fragment {
         });
     }
 
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        cameraExecutor = Executors.newSingleThreadExecutor();
+        appDatabase = AppDatabase.getDatabase(requireContext());
+    }
 
     private void startCamera() {
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext());
@@ -125,7 +135,6 @@ public class RecordFragment extends Fragment {
             }
         }, ContextCompat.getMainExecutor(requireContext()));
     }
-
 
     @SuppressLint("MissingPermission")
     private void startRecording() {
@@ -160,6 +169,7 @@ public class RecordFragment extends Fragment {
                 requireActivity().runOnUiThread(() ->
                         Toast.makeText(requireContext(), "Video Saved: " + name, Toast.LENGTH_SHORT).show());
                 Log.d(TAG, "Video saved: " + outputFileResults.getSavedUri());
+                saveRecordingToDatabase(outputFileResults.getSavedUri().getPath());
             }
 
             @Override
@@ -175,7 +185,6 @@ public class RecordFragment extends Fragment {
         });
     }
 
-
     private void stopRecording() {
         if (videoCapture != null) {
             videoCapture.stopRecording();
@@ -185,7 +194,6 @@ public class RecordFragment extends Fragment {
             tvTimer.setText("00:00");
         }
     }
-
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -209,6 +217,17 @@ public class RecordFragment extends Fragment {
             }
         }
         return true;
+    }
+
+    private void saveRecordingToDatabase(String filePath) {
+        Recording newRecording = new Recording();
+        newRecording.filePath = filePath;
+        newRecording.timestamp = System.currentTimeMillis();
+
+        AppExecutors.getInstance().diskIO().execute(() -> {
+            appDatabase.recordingDao().insert(newRecording);
+            Log.d(TAG, "Recording saved to database: " + filePath);
+        });
     }
 
     @Override

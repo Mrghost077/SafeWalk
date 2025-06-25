@@ -1,12 +1,18 @@
 package com.s23010162.safewalk;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Handler;
+import android.os.Looper;
 import android.telephony.SmsManager;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -14,15 +20,20 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 public class AlertActivity extends AppCompatActivity {
 
     private static final int EMERGENCY_PERMISSIONS_REQUEST_CODE = 123;
+    private static final String DEFAULT_PIN = "1234"; // This should be configurable
     private TextView tvTimer;
-    private EditText etPinEntry;
-    private Button btnCancelAlert;
+    private Button btnCancelAlert, btnRecordingStatus;
+    private CheckBox cbContactsAlerted, cbLocationShared, cbRecordingStarted;
     private CountDownTimer countDownTimer;
     private PreferencesManager preferencesManager;
+    private Handler timerHandler = new Handler(Looper.getMainLooper());
+    private Runnable timerRunnable;
+    private long startTime;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,12 +42,84 @@ public class AlertActivity extends AppCompatActivity {
 
         preferencesManager = new PreferencesManager(this);
         tvTimer = findViewById(R.id.tvTimer);
-        etPinEntry = findViewById(R.id.etPinEntry);
         btnCancelAlert = findViewById(R.id.btnCancelAlert);
+        btnRecordingStatus = findViewById(R.id.btnRecordingStatus);
+        cbContactsAlerted = findViewById(R.id.cbContactsAlerted);
+        cbLocationShared = findViewById(R.id.cbLocationShared);
+        cbRecordingStarted = findViewById(R.id.cbRecordingStarted);
+        startTime = System.currentTimeMillis();
 
-        btnCancelAlert.setOnClickListener(v -> cancelAlert());
+        // Simulate actions being taken
+        simulateEmergencyActions();
 
-        startTimer();
+        btnCancelAlert.setOnClickListener(v -> {
+            showPinDialog();
+        });
+    }
+
+    private void showPinDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_pin_entry, null);
+        builder.setView(dialogView);
+        builder.setTitle("Enter PIN to Cancel Alert");
+        builder.setCancelable(false);
+
+        EditText etPin = dialogView.findViewById(R.id.etPin);
+        Button btnSubmit = dialogView.findViewById(R.id.btnSubmitPin);
+        Button btnCancel = dialogView.findViewById(R.id.btnCancelPin);
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        btnSubmit.setOnClickListener(v -> {
+            String enteredPin = etPin.getText().toString();
+            if (enteredPin.equals(DEFAULT_PIN)) {
+                dialog.dismiss();
+                stopTimer();
+                finish();
+                Toast.makeText(this, "Alert Canceled Successfully", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show();
+                etPin.setText("");
+            }
+        });
+
+        btnCancel.setOnClickListener(v -> {
+            dialog.dismiss();
+        });
+    }
+
+    private void simulateEmergencyActions() {
+        // Start recording timer
+        startRecordingTimer();
+        cbRecordingStarted.setChecked(true);
+
+        // Simulate sending SMS and sharing location after a delay
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            cbContactsAlerted.setChecked(true);
+            cbLocationShared.setChecked(true);
+        }, 1500); // 1.5 second delay
+    }
+
+    private void startRecordingTimer() {
+        timerRunnable = new Runnable() {
+            @Override
+            public void run() {
+                long millis = System.currentTimeMillis() - startTime;
+                long minutes = TimeUnit.MILLISECONDS.toMinutes(millis);
+                long seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60;
+                btnRecordingStatus.setText(String.format(Locale.getDefault(), "RECORDING: %02d:%02d", minutes, seconds));
+                timerHandler.postDelayed(this, 1000);
+            }
+        };
+        timerHandler.post(timerRunnable);
+    }
+
+    private void stopTimer() {
+        if (timerHandler != null && timerRunnable != null) {
+            timerHandler.removeCallbacks(timerRunnable);
+        }
     }
 
     private void startTimer() {
@@ -51,17 +134,6 @@ public class AlertActivity extends AppCompatActivity {
                 triggerEmergencyProtocol();
             }
         }.start();
-    }
-
-    private void cancelAlert() {
-        String pin = etPinEntry.getText().toString();
-        if (preferencesManager.verifyEmergencyPin(pin)) {
-            countDownTimer.cancel();
-            Toast.makeText(this, "Alert Canceled", Toast.LENGTH_SHORT).show();
-            finish();
-        } else {
-            Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show();
-        }
     }
 
     private void triggerEmergencyProtocol() {
@@ -126,6 +198,7 @@ public class AlertActivity extends AppCompatActivity {
         if (countDownTimer != null) {
             countDownTimer.cancel();
         }
+        stopTimer();
         // Reset the flag so a new alert can be triggered
         ShakeDetectorService.setAlertInactive();
     }
