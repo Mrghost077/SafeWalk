@@ -136,9 +136,69 @@ public class UserProfile implements Serializable {
     }
 
     public boolean isValidPin() {
-        return emergencyPin != null &&
-                emergencyPin.length() == 4 &&
-                emergencyPin.matches("\\d{4}");
+        if (emergencyPin == null || emergencyPin.length() != 4 || !emergencyPin.matches("\\d{4}")) {
+            return false;
+        }
+        
+        // Check for common weak patterns
+        String pin = emergencyPin;
+        
+        // Check for sequential numbers (1234, 4321, etc.)
+        if (isSequential(pin)) {
+            return false;
+        }
+        
+        // Check for repeated numbers (1111, 2222, etc.)
+        if (isRepeated(pin)) {
+            return false;
+        }
+        
+        // Check for common patterns (0000, 9999, etc.)
+        if (pin.equals("0000") || pin.equals("9999") || pin.equals("1234") || 
+            pin.equals("4321") || pin.equals("1111") || pin.equals("2222") ||
+            pin.equals("3333") || pin.equals("4444") || pin.equals("5555") ||
+            pin.equals("6666") || pin.equals("7777") || pin.equals("8888")) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    private boolean isSequential(String pin) {
+        int[] digits = new int[4];
+        for (int i = 0; i < 4; i++) {
+            digits[i] = Character.getNumericValue(pin.charAt(i));
+        }
+        
+        // Check ascending sequence
+        boolean ascending = true;
+        for (int i = 1; i < 4; i++) {
+            if (digits[i] != digits[i-1] + 1) {
+                ascending = false;
+                break;
+            }
+        }
+        
+        // Check descending sequence
+        boolean descending = true;
+        for (int i = 1; i < 4; i++) {
+            if (digits[i] != digits[i-1] - 1) {
+                descending = false;
+                break;
+            }
+        }
+        
+        return ascending || descending;
+    }
+    
+    private boolean isRepeated(String pin) {
+        char first = pin.charAt(0);
+        for (int i = 1; i < 4; i++) {
+            if (pin.charAt(i) != first) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public boolean isValidName() {

@@ -9,6 +9,7 @@ import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.telephony.SmsManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -25,7 +26,6 @@ import java.util.concurrent.TimeUnit;
 public class AlertActivity extends AppCompatActivity {
 
     private static final int EMERGENCY_PERMISSIONS_REQUEST_CODE = 123;
-    private static final String DEFAULT_PIN = "1234"; // This should be configurable
     private TextView tvTimer;
     private Button btnCancelAlert, btnRecordingStatus;
     private CheckBox cbContactsAlerted, cbLocationShared, cbRecordingStarted;
@@ -73,14 +73,33 @@ public class AlertActivity extends AppCompatActivity {
         dialog.show();
 
         btnSubmit.setOnClickListener(v -> {
-            String enteredPin = etPin.getText().toString();
-            if (enteredPin.equals(DEFAULT_PIN)) {
-                dialog.dismiss();
-                stopTimer();
-                finish();
-                Toast.makeText(this, "Alert Canceled Successfully", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show();
+            String enteredPin = etPin.getText().toString().trim();
+            
+            // Validate PIN input
+            if (enteredPin.isEmpty()) {
+                Toast.makeText(this, "Please enter your PIN", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            if (enteredPin.length() != 4 || !enteredPin.matches("\\d{4}")) {
+                Toast.makeText(this, "PIN must be 4 digits", Toast.LENGTH_SHORT).show();
+                etPin.setText("");
+                return;
+            }
+            
+            try {
+                if (preferencesManager.verifyEmergencyPin(enteredPin)) {
+                    dialog.dismiss();
+                    stopTimer();
+                    finish();
+                    Toast.makeText(this, "Alert Canceled Successfully", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show();
+                    etPin.setText("");
+                }
+            } catch (Exception e) {
+                Log.e("AlertActivity", "Error verifying PIN", e);
+                Toast.makeText(this, "Error verifying PIN. Please try again.", Toast.LENGTH_SHORT).show();
                 etPin.setText("");
             }
         });

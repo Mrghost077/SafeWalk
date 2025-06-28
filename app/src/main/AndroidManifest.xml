@@ -6,10 +6,13 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.SEND_SMS" />
@@ -29,11 +32,11 @@
         tools:targetApi="31">
 
         <!--
-             IMPORTANT: PASTE YOUR GOOGLE MAPS API KEY HERE
+             IMPORTANT: Add your Google Maps API key to local.properties as MAPS_API_KEY=your_key_here
         -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAyLJVZUguUigbxWhEdefV3XophBIlr4ck" />
+            android:value="${MAPS_API_KEY}" />
 
         <!-- OnboardingActivity with NoActionBar theme and launcher intent -->
         <activity

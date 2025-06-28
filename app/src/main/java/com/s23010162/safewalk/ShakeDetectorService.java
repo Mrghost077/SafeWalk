@@ -7,13 +7,18 @@ import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.IBinder;
 import android.os.Vibrator;
+import android.util.Log;
 
 public class ShakeDetectorService extends Service {
 
+    private static final String TAG = "ShakeDetectorService";
+    private static final long RATE_LIMIT_DURATION = 30000; // 30 seconds between alerts
+    
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private ShakeDetector shakeDetector;
     private static boolean isAlertActive = false;
+    private static long lastAlertTime = 0;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -29,8 +34,11 @@ public class ShakeDetectorService extends Service {
         PreferencesManager preferencesManager = new PreferencesManager(this);
 
         shakeDetector.setOnShakeListener(count -> {
-            if (preferencesManager.isShakeDetectionEnabled() && !isAlertActive) {
+            if (preferencesManager.isShakeDetectionEnabled() && !isAlertActive && !isRateLimited()) {
+                Log.d(TAG, "Shake detected, triggering alert");
                 isAlertActive = true;
+                lastAlertTime = System.currentTimeMillis();
+                
                 // Vibrate to give feedback
                 Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
                 v.vibrate(500);
@@ -39,8 +47,15 @@ public class ShakeDetectorService extends Service {
                 Intent intent = new Intent(this, AlertActivity.class);
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
+            } else if (isRateLimited()) {
+                Log.d(TAG, "Alert rate limited, ignoring shake");
             }
         });
+    }
+
+    private boolean isRateLimited() {
+        long currentTime = System.currentTimeMillis();
+        return (currentTime - lastAlertTime) < RATE_LIMIT_DURATION;
     }
 
     public static void setAlertInactive() {

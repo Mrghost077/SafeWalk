@@ -9,8 +9,9 @@ import com.s23010162.safewalk.UserProfile;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.GCMParameterSpec;
 import java.security.KeyStore;
+import java.security.SecureRandom;
 
 /**
  * Manages user preferences and profile data with encryption for sensitive information
@@ -18,7 +19,11 @@ import java.security.KeyStore;
 public class PreferencesManager {
 
     private static final String PREF_NAME = "UserProfilePrefs";
-    private static final String KEY_ALIAS = "UserProfileKey";
+    private static final String KEY_ALIAS = "SafeWalkUserProfileKey";
+    private static final String ANDROID_KEYSTORE = "AndroidKeyStore";
+    private static final String TRANSFORMATION = "AES/GCM/NoPadding";
+    private static final int GCM_IV_LENGTH = 12;
+    private static final int GCM_TAG_LENGTH = 16;
 
     // Preference keys
     private static final String KEY_FULL_NAME = "full_name";
@@ -39,10 +44,43 @@ public class PreferencesManager {
 
     private SharedPreferences sharedPreferences;
     private Context context;
+    private KeyStore keyStore;
 
     public PreferencesManager(Context context) {
         this.context = context;
         this.sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        initializeKeyStore();
+    }
+
+    private void initializeKeyStore() {
+        try {
+            keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
+            keyStore.load(null);
+            
+            // Create key if it doesn't exist
+            if (!keyStore.containsAlias(KEY_ALIAS)) {
+                createKey();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void createKey() throws Exception {
+        KeyGenerator keyGenerator = KeyGenerator.getInstance(
+                KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE);
+        
+        KeyGenParameterSpec keyGenParameterSpec = new KeyGenParameterSpec.Builder(
+                KEY_ALIAS,
+                KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setUserAuthenticationRequired(false)
+                .setRandomizedEncryptionRequired(true)
+                .build();
+        
+        keyGenerator.init(keyGenParameterSpec);
+        keyGenerator.generateKey();
     }
 
     /**
@@ -122,7 +160,6 @@ public class PreferencesManager {
         sharedPreferences.edit().putBoolean(KEY_IS_FIRST_LAUNCH, isFirstLaunch).apply();
     }
 
-
     /**
      * Check if user profile is complete
      */
@@ -172,15 +209,33 @@ public class PreferencesManager {
     }
 
     /**
-     * Simple encryption for demonstration (use Android Keystore in production)
-     * Note: This is a simplified version. For production apps, use Android Keystore properly
+     * Proper encryption using Android Keystore
      */
     private String encryptData(String data) {
         try {
-            // For simplicity, using Base64 encoding
-            // In production, use proper encryption with Android Keystore
-            byte[] encrypted = Base64.encode(data.getBytes(), Base64.DEFAULT);
-            return new String(encrypted);
+            if (data == null || data.isEmpty()) {
+                return "";
+            }
+
+            SecretKey secretKey = (SecretKey) keyStore.getKey(KEY_ALIAS, null);
+            Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+            
+            // Generate random IV
+            SecureRandom secureRandom = new SecureRandom();
+            byte[] iv = new byte[GCM_IV_LENGTH];
+            secureRandom.nextBytes(iv);
+            
+            GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmParameterSpec);
+            
+            byte[] encrypted = cipher.doFinal(data.getBytes("UTF-8"));
+            
+            // Combine IV and encrypted data
+            byte[] combined = new byte[iv.length + encrypted.length];
+            System.arraycopy(iv, 0, combined, 0, iv.length);
+            System.arraycopy(encrypted, 0, combined, iv.length, encrypted.length);
+            
+            return Base64.encodeToString(combined, Base64.DEFAULT);
         } catch (Exception e) {
             e.printStackTrace();
             return data; // Return original if encryption fails
@@ -188,17 +243,33 @@ public class PreferencesManager {
     }
 
     /**
-     * Simple decryption for demonstration
+     * Proper decryption using Android Keystore
      */
     private String decryptData(String encryptedData) {
         try {
-            // For simplicity, using Base64 decoding
-            // In production, use proper decryption with Android Keystore
-            byte[] decrypted = Base64.decode(encryptedData.getBytes(), Base64.DEFAULT);
-            return new String(decrypted);
+            if (encryptedData == null || encryptedData.isEmpty()) {
+                return "";
+            }
+
+            SecretKey secretKey = (SecretKey) keyStore.getKey(KEY_ALIAS, null);
+            Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+            
+            byte[] combined = Base64.decode(encryptedData, Base64.DEFAULT);
+            
+            // Extract IV and encrypted data
+            byte[] iv = new byte[GCM_IV_LENGTH];
+            byte[] encrypted = new byte[combined.length - GCM_IV_LENGTH];
+            System.arraycopy(combined, 0, iv, 0, GCM_IV_LENGTH);
+            System.arraycopy(combined, GCM_IV_LENGTH, encrypted, 0, encrypted.length);
+            
+            GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmParameterSpec);
+            
+            byte[] decrypted = cipher.doFinal(encrypted);
+            return new String(decrypted, "UTF-8");
         } catch (Exception e) {
             e.printStackTrace();
-            return ""; // Return empty if decryption fails
+            return encryptedData; // Return original if decryption fails
         }
     }
 }
