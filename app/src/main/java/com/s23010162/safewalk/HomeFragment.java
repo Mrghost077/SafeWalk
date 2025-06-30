@@ -15,6 +15,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -191,25 +192,113 @@ public class HomeFragment extends Fragment {
         final TextView tvCountdown = dialogView.findViewById(R.id.tvCountdown);
         Button btnCancelSos = dialogView.findViewById(R.id.btnCancelSos);
 
-        sosCountDownTimer = new CountDownTimer(5000, 1000) {
+        final long countdownMillis = 5000;
+        final long[] timeLeft = {countdownMillis};
+        final boolean[] isPinDialogOpen = {false};
+
+        sosCountDownTimer = new CountDownTimer(timeLeft[0], 1000) {
             @Override
             public void onTick(long millisUntilFinished) {
+                timeLeft[0] = millisUntilFinished;
                 tvCountdown.setText(String.valueOf(millisUntilFinished / 1000));
             }
 
             @Override
             public void onFinish() {
-                dialog.dismiss();
-                sendSmsToEmergencyContacts();
-                Intent intent = new Intent(getActivity(), AlertActivity.class);
-                startActivity(intent);
+                if (!isPinDialogOpen[0]) {
+                    dialog.dismiss();
+                    sendSmsToEmergencyContacts();
+                    Intent intent = new Intent(getActivity(), AlertActivity.class);
+                    startActivity(intent);
+                }
             }
         }.start();
 
         btnCancelSos.setOnClickListener(v -> {
             sosCountDownTimer.cancel();
-            dialog.dismiss();
-            Toast.makeText(getContext(), "SOS Canceled", Toast.LENGTH_SHORT).show();
+            isPinDialogOpen[0] = true;
+            showPinEntryDialog(dialog, timeLeft[0]);
+        });
+    }
+
+    private void showPinEntryDialog(AlertDialog sosDialog, long timeLeft) {
+        AlertDialog.Builder pinBuilder = new AlertDialog.Builder(requireContext());
+        LayoutInflater inflater = requireActivity().getLayoutInflater();
+        View pinView = inflater.inflate(R.layout.dialog_pin_entry, null);
+        pinBuilder.setView(pinView);
+        pinBuilder.setCancelable(false);
+        final AlertDialog pinDialog = pinBuilder.create();
+        pinDialog.show();
+
+        EditText etPin = pinView.findViewById(R.id.etPin);
+        Button btnSubmit = pinView.findViewById(R.id.btnSubmitPin);
+        Button btnCancel = pinView.findViewById(R.id.btnCancelPin);
+
+        PreferencesManager preferencesManager = new PreferencesManager(requireContext());
+
+        btnSubmit.setOnClickListener(v -> {
+            String enteredPin = etPin.getText().toString().trim();
+            if (enteredPin.isEmpty()) {
+                Toast.makeText(getContext(), "Please enter your PIN", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (enteredPin.length() != 4 || !enteredPin.matches("\\d{4}")) {
+                Toast.makeText(getContext(), "PIN must be 4 digits", Toast.LENGTH_SHORT).show();
+                etPin.setText("");
+                return;
+            }
+            if (preferencesManager.verifyEmergencyPin(enteredPin)) {
+                pinDialog.dismiss();
+                sosDialog.dismiss();
+                Toast.makeText(getContext(), "SOS Canceled", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(getContext(), "Incorrect PIN", Toast.LENGTH_SHORT).show();
+                etPin.setText("");
+            }
+        });
+
+        btnCancel.setOnClickListener(v -> {
+            pinDialog.dismiss();
+            // Resume countdown if time left
+            if (timeLeft > 0) {
+                showSosCountdownWithTimeLeft(sosDialog, timeLeft);
+            }
+        });
+    }
+
+    private void showSosCountdownWithTimeLeft(AlertDialog oldDialog, long timeLeft) {
+        if (oldDialog != null && oldDialog.isShowing()) oldDialog.dismiss();
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        LayoutInflater inflater = requireActivity().getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_sos_countdown, null);
+        builder.setView(dialogView);
+        builder.setCancelable(false);
+        final AlertDialog dialog = builder.create();
+        dialog.show();
+        final TextView tvCountdown = dialogView.findViewById(R.id.tvCountdown);
+        Button btnCancelSos = dialogView.findViewById(R.id.btnCancelSos);
+        final long[] timeLeftArr = {timeLeft};
+        final boolean[] isPinDialogOpen = {false};
+        sosCountDownTimer = new CountDownTimer(timeLeftArr[0], 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                timeLeftArr[0] = millisUntilFinished;
+                tvCountdown.setText(String.valueOf(millisUntilFinished / 1000));
+            }
+            @Override
+            public void onFinish() {
+                if (!isPinDialogOpen[0]) {
+                    dialog.dismiss();
+                    sendSmsToEmergencyContacts();
+                    Intent intent = new Intent(getActivity(), AlertActivity.class);
+                    startActivity(intent);
+                }
+            }
+        }.start();
+        btnCancelSos.setOnClickListener(v -> {
+            sosCountDownTimer.cancel();
+            isPinDialogOpen[0] = true;
+            showPinEntryDialog(dialog, timeLeftArr[0]);
         });
     }
 
