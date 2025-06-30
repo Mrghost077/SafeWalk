@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
@@ -12,9 +13,12 @@ import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -22,18 +26,35 @@ import androidx.appcompat.app.AppCompatActivity;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import android.location.Location;
+import androidx.core.app.ActivityCompat;
+import android.widget.FrameLayout;
 
-public class AlertActivity extends AppCompatActivity {
+public class AlertActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private static final int EMERGENCY_PERMISSIONS_REQUEST_CODE = 123;
     private TextView tvTimer;
-    private Button btnCancelAlert, btnRecordingStatus;
+    private Button btnCancelAlert, btnRecordingStatus, btnCallEmergency, btnHideAlert;
     private CheckBox cbContactsAlerted, cbLocationShared, cbRecordingStarted;
     private CountDownTimer countDownTimer;
     private PreferencesManager preferencesManager;
     private Handler timerHandler = new Handler(Looper.getMainLooper());
     private Runnable timerRunnable;
     private long startTime;
+    private ImageView imgAppLogo, imgRecordingDot, imgContactsAlerted, imgLocationShared, imgRecordingStarted;
+    private TextView tvEmergencyStatus, tvReassure, tvRecordingStatus;
+    private MapView mapView;
+    private GoogleMap googleMap;
+    private FusedLocationProviderClient fusedLocationClient;
+    private Location lastKnownLocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +62,16 @@ public class AlertActivity extends AppCompatActivity {
         setContentView(R.layout.activity_alert);
 
         preferencesManager = new PreferencesManager(this);
+        imgAppLogo = findViewById(R.id.imgAppLogo);
+        imgRecordingDot = findViewById(R.id.imgRecordingDot);
+        imgContactsAlerted = findViewById(R.id.imgContactsAlerted);
+        imgLocationShared = findViewById(R.id.imgLocationShared);
+        imgRecordingStarted = findViewById(R.id.imgRecordingStarted);
+        tvEmergencyStatus = findViewById(R.id.tvEmergencyStatus);
+        tvReassure = findViewById(R.id.tvReassure);
+        tvRecordingStatus = findViewById(R.id.tvRecordingStatus);
+        btnCallEmergency = findViewById(R.id.btnCallEmergency);
+        btnHideAlert = findViewById(R.id.btnHideAlert);
         tvTimer = findViewById(R.id.tvTimer);
         btnCancelAlert = findViewById(R.id.btnCancelAlert);
         btnRecordingStatus = findViewById(R.id.btnRecordingStatus);
@@ -49,12 +80,39 @@ public class AlertActivity extends AppCompatActivity {
         cbRecordingStarted = findViewById(R.id.cbRecordingStarted);
         startTime = System.currentTimeMillis();
 
+        // Animate the recording dot
+        animateRecordingDot();
+
         // Simulate actions being taken
         simulateEmergencyActions();
 
         btnCancelAlert.setOnClickListener(v -> {
             showPinDialog();
         });
+
+        btnCallEmergency.setOnClickListener(v -> {
+            // For now, just show a toast. Later, can add call intent with number.
+            Toast.makeText(this, "Call Emergency feature coming soon!", Toast.LENGTH_SHORT).show();
+        });
+
+        btnHideAlert.setOnClickListener(v -> {
+            // Minimize or hide the alert activity for discretion
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                moveTaskToBack(true);
+            } else {
+                finish();
+            }
+        });
+
+        mapView = new MapView(this);
+        mapView.onCreate(savedInstanceState);
+        ((FrameLayout) findViewById(R.id.mapPreviewContainer)).removeAllViews();
+        ((FrameLayout) findViewById(R.id.mapPreviewContainer)).addView(mapView);
+        mapView.getMapAsync(this);
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        // Start the elapsed timer for the top timer (tvTimer)
+        startElapsedTimer();
     }
 
     private void showPinDialog() {
@@ -109,15 +167,30 @@ public class AlertActivity extends AppCompatActivity {
         });
     }
 
+    private void animateRecordingDot() {
+        if (imgRecordingDot != null) {
+            Animation blink = new AlphaAnimation(0.0f, 1.0f);
+            blink.setDuration(500);
+            blink.setStartOffset(20);
+            blink.setRepeatMode(Animation.REVERSE);
+            blink.setRepeatCount(Animation.INFINITE);
+            imgRecordingDot.startAnimation(blink);
+        }
+    }
+
     private void simulateEmergencyActions() {
         // Start recording timer
         startRecordingTimer();
         cbRecordingStarted.setChecked(true);
+        imgRecordingStarted.setImageResource(android.R.drawable.checkbox_on_background);
+        tvRecordingStatus.setText("Recording...");
 
         // Simulate sending SMS and sharing location after a delay
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             cbContactsAlerted.setChecked(true);
+            imgContactsAlerted.setImageResource(android.R.drawable.checkbox_on_background);
             cbLocationShared.setChecked(true);
+            imgLocationShared.setImageResource(android.R.drawable.checkbox_on_background);
         }, 1500); // 1.5 second delay
     }
 
@@ -141,18 +214,18 @@ public class AlertActivity extends AppCompatActivity {
         }
     }
 
-    private void startTimer() {
-        countDownTimer = new CountDownTimer(15000, 1000) {
+    private void startElapsedTimer() {
+        timerRunnable = new Runnable() {
             @Override
-            public void onTick(long millisUntilFinished) {
-                tvTimer.setText(String.format(Locale.getDefault(), "%d", millisUntilFinished / 1000));
+            public void run() {
+                long millis = System.currentTimeMillis() - startTime;
+                long minutes = TimeUnit.MILLISECONDS.toMinutes(millis);
+                long seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60;
+                tvTimer.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
+                timerHandler.postDelayed(this, 1000);
             }
-
-            @Override
-            public void onFinish() {
-                triggerEmergencyProtocol();
-            }
-        }.start();
+        };
+        timerHandler.post(timerRunnable);
     }
 
     private void triggerEmergencyProtocol() {
@@ -212,7 +285,40 @@ public class AlertActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onMapReady(GoogleMap map) {
+        googleMap = map;
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            googleMap.setMyLocationEnabled(true);
+            fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
+                if (location != null) {
+                    lastKnownLocation = location;
+                    LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+                    googleMap.clear();
+                    googleMap.addMarker(new MarkerOptions().position(latLng).title("My Location"));
+                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16));
+                }
+            });
+        } else {
+            // Show a message if location permission is missing
+            Toast.makeText(this, "Location permission not granted. Map preview unavailable.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (mapView != null) mapView.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        if (mapView != null) mapView.onPause();
+        super.onPause();
+    }
+
+    @Override
     protected void onDestroy() {
+        if (mapView != null) mapView.onDestroy();
         super.onDestroy();
         if (countDownTimer != null) {
             countDownTimer.cancel();
@@ -220,5 +326,11 @@ public class AlertActivity extends AppCompatActivity {
         stopTimer();
         // Reset the flag so a new alert can be triggered
         ShakeDetectorService.setAlertInactive();
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        if (mapView != null) mapView.onLowMemory();
     }
 } 
