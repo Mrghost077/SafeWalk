@@ -14,6 +14,7 @@ import android.widget.Toast;
 public class SettingsFragment extends Fragment {
 
     private Switch switchShakeSensitivity, switchBackgroundLocation, switchAutoRecord, switchVibrate, switchSoundAlerts;
+    private PreferencesManager preferencesManager;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -32,6 +33,14 @@ public class SettingsFragment extends Fragment {
         switchVibrate = view.findViewById(R.id.switchVibrate);
         switchSoundAlerts = view.findViewById(R.id.switchSoundAlerts);
 
+        // Initialize preferences
+        preferencesManager = new PreferencesManager(requireContext());
+
+        // Set initial states from preferences
+        switchShakeSensitivity.setChecked(preferencesManager.isShakeDetectionEnabled());
+        switchBackgroundLocation.setChecked(preferencesManager.isLocationTrackingEnabled());
+        switchAutoRecord.setChecked(preferencesManager.isAutoRecordingEnabled());
+
         // Navigation buttons
         view.findViewById(R.id.btnNavManageContacts).setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.navigation_contacts));
@@ -44,16 +53,22 @@ public class SettingsFragment extends Fragment {
 
         // Switch listeners
         switchShakeSensitivity.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            // Persist preference
+            preferencesManager.setShakeDetectionEnabled(isChecked);
             // Handle shake sensitivity toggle
             Toast.makeText(getContext(), "Shake sensitivity: " + (isChecked ? "ON" : "OFF"), Toast.LENGTH_SHORT).show();
         });
 
         switchBackgroundLocation.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            // Persist preference
+            preferencesManager.setLocationTrackingEnabled(isChecked);
             // Handle background location toggle
             Toast.makeText(getContext(), "Background location: " + (isChecked ? "ON" : "OFF"), Toast.LENGTH_SHORT).show();
         });
 
         switchAutoRecord.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            // Persist preference
+            preferencesManager.setAutoRecordingEnabled(isChecked);
             // Handle auto-record toggle
             Toast.makeText(getContext(), "Auto-record on SOS: " + (isChecked ? "ON" : "OFF"), Toast.LENGTH_SHORT).show();
         });

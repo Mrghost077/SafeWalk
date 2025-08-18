@@ -5,7 +5,7 @@ import android.content.SharedPreferences;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
-import com.s23010162.safewalk.UserProfile;
+
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -112,44 +112,6 @@ public class PreferencesManager {
     }
 
     /**
-     * Set user profile data (alias for saveUserProfile)
-     */
-    public void setUserProfile(UserProfile userProfile) {
-        saveUserProfile(userProfile);
-    }
-
-    /**
-     * Retrieve user profile data
-     */
-    public UserProfile getUserProfile() {
-        try {
-            if (!isProfileComplete()) {
-                return null;
-            }
-
-            UserProfile profile = new UserProfile();
-            profile.setFullName(sharedPreferences.getString(KEY_FULL_NAME, ""));
-            profile.setEmailAddress(sharedPreferences.getString(KEY_EMAIL, ""));
-            profile.setPhoneNumber(sharedPreferences.getString(KEY_PHONE, ""));
-
-            // Decrypt sensitive data
-            String encryptedPin = sharedPreferences.getString(KEY_EMERGENCY_PIN, "");
-            String decryptedPin = decryptData(encryptedPin);
-            profile.setEmergencyPin(decryptedPin);
-
-            profile.setLocationAccessEnabled(sharedPreferences.getBoolean(KEY_LOCATION_ACCESS, false));
-            profile.setCameraAccessEnabled(sharedPreferences.getBoolean(KEY_CAMERA_ACCESS, false));
-            profile.setCreatedTimestamp(sharedPreferences.getLong(KEY_CREATED_TIMESTAMP, 0));
-            profile.setProfileComplete(sharedPreferences.getBoolean(KEY_IS_PROFILE_COMPLETE, false));
-
-            return profile;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    /**
      * Check if this is the first time the app is launched
      */
     public boolean isFirstLaunch() {
@@ -178,21 +140,6 @@ public class PreferencesManager {
     public void setAutoRecordingEnabled(boolean enabled) { sharedPreferences.edit().putBoolean(KEY_AUTO_RECORDING_ENABLED, enabled).apply(); }
     public void setLocationTrackingEnabled(boolean enabled) { sharedPreferences.edit().putBoolean(KEY_LOCATION_TRACKING_ENABLED, enabled).apply(); }
     public void setOfflineModeEnabled(boolean enabled) { sharedPreferences.edit().putBoolean(KEY_OFFLINE_MODE_ENABLED, enabled).apply(); }
-
-    /**
-     * Clear all user data (for logout or reset)
-     */
-    public boolean clearUserData() {
-        try {
-            SharedPreferences.Editor editor = sharedPreferences.edit();
-            editor.clear();
-            editor.putBoolean(KEY_IS_FIRST_LAUNCH, false); // Keep this to avoid onboarding again
-            return editor.commit();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
 
     /**
      * Verify emergency PIN
