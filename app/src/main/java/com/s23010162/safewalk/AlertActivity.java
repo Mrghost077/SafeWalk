@@ -44,7 +44,7 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
 
     private static final int EMERGENCY_PERMISSIONS_REQUEST_CODE = 123;
     private static final int CALL_PHONE_PERMISSION_REQUEST_CODE = 456;
-    private static final String EMERGENCY_SERVICES_NUMBER = "tel:"; // Placeholder for emergency services
+    private static final String EMERGENCY_SERVICES_NUMBER = "tel:"; // Placeholder for 119 or other services
     private TextView tvTimer;
     private Button btnCancelAlert, btnRecordingStatus, btnCallEmergency, btnHideAlert;
     private CheckBox cbContactsAlerted, cbLocationShared, cbRecordingStarted;
@@ -59,6 +59,7 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
     private GoogleMap googleMap;
     private FusedLocationProviderClient fusedLocationClient;
     private Location lastKnownLocation;
+    private Runnable pendingCallAction; // Will store the action until permission is granted
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -142,38 +143,39 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
         dialog.show();
     }
 
-    private void callEmergencyServices() {
+    private void ensureCallPermission(Runnable action) {
         if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+            pendingCallAction = action; // Save the action to run later
             requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, CALL_PHONE_PERMISSION_REQUEST_CODE);
         } else {
-            initiateCall(EMERGENCY_SERVICES_NUMBER);
+            action.run(); // Permission already granted, run immediately
         }
     }
 
+    private void callEmergencyServices() {
+        ensureCallPermission(() -> initiateCall(EMERGENCY_SERVICES_NUMBER));
+    }
+
     private void callEmergencyContact() {
-        if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, CALL_PHONE_PERMISSION_REQUEST_CODE);
-        } else {
-            // Get emergency contacts from database
+        ensureCallPermission(() -> {
             AppDatabase db = AppDatabase.getDatabase(this);
             new Thread(() -> {
                 List<EmergencyContact> contacts = db.emergencyContactDao().getAllContactsBlocking();
                 runOnUiThread(() -> {
                     if (contacts != null && !contacts.isEmpty()) {
-                        // Use the first emergency contact for testing
                         EmergencyContact contact = contacts.get(0);
                         String phoneNumber = "tel:" + contact.phoneNumber;
                         initiateCall(phoneNumber);
                     } else {
-                        // Fallback to a test number if no contacts are available
-                        String testNumber = "tel:+1234567890"; // Test number for development
+                        String testNumber = "tel:+1234567890"; // Test number
                         initiateCall(testNumber);
                         Toast.makeText(this, "No emergency contacts found. Using test number.", Toast.LENGTH_SHORT).show();
                     }
                 });
             }).start();
-        }
+        });
     }
+
 
     private void initiateCall(String phoneNumber) {
         try {
@@ -402,6 +404,7 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
         if (requestCode == EMERGENCY_PERMISSIONS_REQUEST_CODE) {
             boolean allPermissionsGranted = true;
             for (int result : grantResults) {
@@ -410,23 +413,26 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
                     break;
                 }
             }
-            
+
             if (allPermissionsGranted) {
-                // All permissions granted, execute emergency actions
                 executeEmergencyActions();
             } else {
-                // Some permissions denied, show warning but keep activity open
                 Toast.makeText(this, "Some permissions denied. Emergency features may not work properly.", Toast.LENGTH_LONG).show();
             }
+
         } else if (requestCode == CALL_PHONE_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission was granted, retry the call action
-                Toast.makeText(this, "Call permission granted. Please try again.", Toast.LENGTH_SHORT).show();
+                // Permission granted, run pending call action
+                if (pendingCallAction != null) {
+                    pendingCallAction.run();
+                    pendingCallAction = null; // Clear after running
+                }
             } else {
                 Toast.makeText(this, "Call permission is required to make emergency calls.", Toast.LENGTH_LONG).show();
             }
         }
     }
+
 
     @Override
     public void onMapReady(GoogleMap map) {
