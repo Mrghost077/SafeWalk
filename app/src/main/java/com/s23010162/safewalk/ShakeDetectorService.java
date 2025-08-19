@@ -43,8 +43,9 @@ public class ShakeDetectorService extends Service {
                 Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
                 v.vibrate(500);
 
-                // Launch the AlertActivity
+                // Launch the AlertActivity with type = Shake Detected
                 Intent intent = new Intent(this, AlertActivity.class);
+                intent.putExtra(AlertActivity.EXTRA_ALERT_TYPE, "Shake Detected");
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
             } else if (isRateLimited()) {

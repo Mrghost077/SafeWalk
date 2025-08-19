@@ -38,6 +38,16 @@ public class AlertHistoryFragment extends Fragment {
 
         loadAlerts();
 
+        View emptyView = view.findViewById(R.id.tvEmptyState);
+        // After loading, toggle empty state in main thread
+        AppExecutors.getInstance().mainThread().execute(() -> {
+            if (adapter.getItemCount() == 0 && emptyView != null) {
+                emptyView.setVisibility(View.VISIBLE);
+            } else if (emptyView != null) {
+                emptyView.setVisibility(View.GONE);
+            }
+        });
+
         return view;
     }
 
@@ -46,6 +56,10 @@ public class AlertHistoryFragment extends Fragment {
             final List<Alert> alerts = db.alertDao().getAllAlerts();
             AppExecutors.getInstance().mainThread().execute(() -> {
                 adapter.setAlerts(alerts);
+                View emptyViewInner = getView() != null ? getView().findViewById(R.id.tvEmptyState) : null;
+                if (emptyViewInner != null) {
+                    emptyViewInner.setVisibility(alerts == null || alerts.isEmpty() ? View.VISIBLE : View.GONE);
+                }
             });
         });
     }

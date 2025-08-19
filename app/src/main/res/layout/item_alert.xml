@@ -31,5 +31,23 @@
             android:textColor="@color/secondary_text_color"
             android:textSize="14sp" />
 
+        <TextView
+            android:id="@+id/tvAlertType"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Type: Shake Detected"
+            android:textColor="@color/secondary_text_color"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tvRecordingStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Recording: Started"
+            android:textColor="@color/secondary_text_color"
+            android:textSize="14sp" />
+
     </LinearLayout>
 </androidx.cardview.widget.CardView> 

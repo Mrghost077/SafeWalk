@@ -34,6 +34,8 @@ public class AlertHistoryAdapter extends RecyclerView.Adapter<AlertHistoryAdapte
         Alert alert = alerts.get(position);
         holder.tvTimestamp.setText(dateFormat.format(new Date(alert.timestamp)));
         holder.tvLocation.setText("Lat: " + alert.latitude + ", Lon: " + alert.longitude);
+        holder.tvType.setText("Type: " + (alert.type == null ? "Unknown" : alert.type));
+        holder.tvRecordingStatus.setText(alert.recordingStarted ? "Recording: Started" : "Recording: Not started");
     }
 
     @Override
@@ -49,11 +51,15 @@ public class AlertHistoryAdapter extends RecyclerView.Adapter<AlertHistoryAdapte
     static class AlertViewHolder extends RecyclerView.ViewHolder {
         TextView tvTimestamp;
         TextView tvLocation;
+        TextView tvType;
+        TextView tvRecordingStatus;
 
         public AlertViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTimestamp = itemView.findViewById(R.id.tvAlertTimestamp);
             tvLocation = itemView.findViewById(R.id.tvAlertLocation);
+            tvType = itemView.findViewById(R.id.tvAlertType);
+            tvRecordingStatus = itemView.findViewById(R.id.tvRecordingStatus);
         }
     }
 } 

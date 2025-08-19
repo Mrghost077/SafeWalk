@@ -10,6 +10,12 @@ public interface AlertDao {
     @Insert
     void insert(Alert alert);
 
+    @Insert
+    long insertReturningId(Alert alert);
+
     @Query("SELECT * FROM alerts ORDER BY timestamp DESC")
     List<Alert> getAllAlerts();
+
+    @Query("UPDATE alerts SET recordingStarted = 1 WHERE id = :alertId")
+    void markRecordingStarted(int alertId);
 } 

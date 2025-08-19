@@ -41,6 +41,7 @@ import androidx.core.content.ContextCompat;
 import android.widget.FrameLayout;
 
 public class AlertActivity extends AppCompatActivity implements OnMapReadyCallback {
+    public static final String EXTRA_ALERT_TYPE = "extra_alert_type";
 
     private static final int EMERGENCY_PERMISSIONS_REQUEST_CODE = 123;
     private static final int CALL_PHONE_PERMISSION_REQUEST_CODE = 456;
@@ -329,9 +330,14 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
                 AppDatabase db = AppDatabase.getDatabase(this);
                 
                 // 1. Save alert to database
-                Alert alert = new Alert(System.currentTimeMillis(), "Shake Detected", 0.0, 0.0);
-                db.alertDao().insert(alert);
-                Log.d("AlertActivity", "Alert saved to database");
+                String alertType = getIntent() != null ? getIntent().getStringExtra(EXTRA_ALERT_TYPE) : null;
+                if (alertType == null || alertType.trim().isEmpty()) {
+                    alertType = "Shake Detected";
+                }
+                Alert alert = new Alert(System.currentTimeMillis(), alertType, 0.0, 0.0);
+                long alertRowId = db.alertDao().insertReturningId(alert);
+                alert.id = (int) alertRowId;
+                Log.d("AlertActivity", "Alert saved to database with id=" + alert.id);
                 
                 // 2. Retrieve emergency contacts
                 List<EmergencyContact> contacts = db.emergencyContactDao().getAllContactsBlocking();
@@ -342,6 +348,14 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
                     try {
                         sendSmsToAll(contacts);
                         startRecordingService();
+                        AppExecutors.getInstance().diskIO().execute(() -> {
+                            try {
+                                db.alertDao().markRecordingStarted(alert.id);
+                                Log.d("AlertActivity", "Alert recordingStarted marked for id=" + alert.id);
+                            } catch (Exception e) {
+                                Log.e("AlertActivity", "Failed to mark recording started", e);
+                            }
+                        });
                         Toast.makeText(this, "EMERGENCY ALERT TRIGGERED!", Toast.LENGTH_LONG).show();
                         Log.d("AlertActivity", "Emergency actions completed successfully");
                     } catch (Exception e) {

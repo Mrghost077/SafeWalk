@@ -76,6 +76,7 @@ public class HomeFragment extends Fragment {
         Button btnStartWalk = view.findViewById(R.id.btnStartWalk);
         Button btnQuickRecord = view.findViewById(R.id.btnQuickRecord);
         Button btnViewRecordings = view.findViewById(R.id.btnViewRecordings);
+        Button btnAlertHistory = view.findViewById(R.id.btnAlertHistory);
 
         btnEmergencySos.setOnClickListener(v -> {
             showSosCountdown();
@@ -91,6 +92,9 @@ public class HomeFragment extends Fragment {
 
         btnViewRecordings.setOnClickListener(v ->
                 Navigation.findNavController(v).navigate(R.id.navigation_recordings_list));
+
+        btnAlertHistory.setOnClickListener(v ->
+                Navigation.findNavController(v).navigate(R.id.action_home_to_history));
 
         checkLocationPermission();
         updateSafetyStatus();
@@ -209,6 +213,7 @@ public class HomeFragment extends Fragment {
                     dialog.dismiss();
                     sendSmsToEmergencyContacts();
                     Intent intent = new Intent(getActivity(), AlertActivity.class);
+                    intent.putExtra(AlertActivity.EXTRA_ALERT_TYPE, "SOS Triggered");
                     startActivity(intent);
                 }
             }
@@ -291,6 +296,7 @@ public class HomeFragment extends Fragment {
                     dialog.dismiss();
                     sendSmsToEmergencyContacts();
                     Intent intent = new Intent(getActivity(), AlertActivity.class);
+                    intent.putExtra(AlertActivity.EXTRA_ALERT_TYPE, "SOS Triggered");
                     startActivity(intent);
                 }
             }

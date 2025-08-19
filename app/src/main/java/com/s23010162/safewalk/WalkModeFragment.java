@@ -262,6 +262,7 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
                 if (!isPinDialogOpen[0]) {
                     dialog.dismiss();
                     Intent intent = new Intent(getActivity(), AlertActivity.class);
+                    intent.putExtra(AlertActivity.EXTRA_ALERT_TYPE, "SOS Triggered");
                     startActivity(intent);
                     stopLocationUpdates();
                 }
@@ -344,6 +345,7 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
                 if (!isPinDialogOpen[0]) {
                     dialog.dismiss();
                     Intent intent = new Intent(getActivity(), AlertActivity.class);
+                    intent.putExtra(AlertActivity.EXTRA_ALERT_TYPE, "SOS Triggered");
                     startActivity(intent);
                     stopLocationUpdates();
                 }

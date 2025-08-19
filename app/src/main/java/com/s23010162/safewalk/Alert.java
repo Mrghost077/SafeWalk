@@ -11,6 +11,7 @@ public class Alert {
     public String type; // e.g., "Shake Detected", "SOS Button"
     public double latitude;
     public double longitude;
+    public boolean recordingStarted; // whether a recording was started for this alert
 
     public Alert(long timestamp, String type, double latitude, double longitude) {
         this.timestamp = timestamp;
