@@ -41,6 +41,8 @@ import android.widget.FrameLayout;
 public class AlertActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private static final int EMERGENCY_PERMISSIONS_REQUEST_CODE = 123;
+    private static final int CALL_PHONE_PERMISSION_REQUEST_CODE = 456;
+    private static final String EMERGENCY_SERVICES_NUMBER = "tel:"; // Placeholder for emergency services
     private TextView tvTimer;
     private Button btnCancelAlert, btnRecordingStatus, btnCallEmergency, btnHideAlert;
     private CheckBox cbContactsAlerted, cbLocationShared, cbRecordingStarted;
@@ -91,8 +93,7 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
         });
 
         btnCallEmergency.setOnClickListener(v -> {
-            // For now, just show a toast. Later, can add call intent with number.
-            Toast.makeText(this, "Call Emergency feature coming soon!", Toast.LENGTH_SHORT).show();
+            showCallEmergencyDialog();
         });
 
         btnHideAlert.setOnClickListener(v -> {
@@ -113,6 +114,74 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
 
         // Start the elapsed timer for the top timer (tvTimer)
         startElapsedTimer();
+    }
+
+    private void showCallEmergencyDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Call Emergency");
+        builder.setMessage("Choose who you want to call:");
+        
+        builder.setPositiveButton("Call Emergency Services", (dialog, which) -> {
+            callEmergencyServices();
+        });
+        
+        builder.setNegativeButton("Call Emergency Contact", (dialog, which) -> {
+            callEmergencyContact();
+        });
+        
+        builder.setNeutralButton("Cancel", (dialog, which) -> {
+            dialog.dismiss();
+        });
+        
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+
+    private void callEmergencyServices() {
+        if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, CALL_PHONE_PERMISSION_REQUEST_CODE);
+        } else {
+            initiateCall(EMERGENCY_SERVICES_NUMBER);
+        }
+    }
+
+    private void callEmergencyContact() {
+        if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, CALL_PHONE_PERMISSION_REQUEST_CODE);
+        } else {
+            // Get emergency contacts from database
+            AppDatabase db = AppDatabase.getDatabase(this);
+            new Thread(() -> {
+                List<EmergencyContact> contacts = db.emergencyContactDao().getAllContactsBlocking();
+                runOnUiThread(() -> {
+                    if (contacts != null && !contacts.isEmpty()) {
+                        // Use the first emergency contact for testing
+                        EmergencyContact contact = contacts.get(0);
+                        String phoneNumber = "tel:" + contact.phoneNumber;
+                        initiateCall(phoneNumber);
+                    } else {
+                        // Fallback to a test number if no contacts are available
+                        String testNumber = "tel:+1234567890"; // Test number for development
+                        initiateCall(testNumber);
+                        Toast.makeText(this, "No emergency contacts found. Using test number.", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }).start();
+        }
+    }
+
+    private void initiateCall(String phoneNumber) {
+        try {
+            Intent callIntent = new Intent(Intent.ACTION_CALL);
+            callIntent.setData(android.net.Uri.parse(phoneNumber));
+            startActivity(callIntent);
+        } catch (SecurityException e) {
+            Log.e("AlertActivity", "Permission denied for making calls", e);
+            Toast.makeText(this, "Permission denied to make calls", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e("AlertActivity", "Error initiating call", e);
+            Toast.makeText(this, "Error making call", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void showPinDialog() {
@@ -280,6 +349,14 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
             } else {
                 Toast.makeText(this, "Permissions are required to send alerts and record video.", Toast.LENGTH_LONG).show();
                 finish();
+            }
+        } else if (requestCode == CALL_PHONE_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission was granted, retry the call action
+                // We'll need to store the last action and retry it
+                Toast.makeText(this, "Call permission granted. Please try again.", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Call permission is required to make emergency calls.", Toast.LENGTH_LONG).show();
             }
         }
     }
