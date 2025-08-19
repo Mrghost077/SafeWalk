@@ -36,6 +36,8 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import android.location.Location;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import android.widget.FrameLayout;
 
 public class AlertActivity extends AppCompatActivity implements OnMapReadyCallback {
@@ -85,8 +87,11 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
         // Animate the recording dot
         animateRecordingDot();
 
-        // Simulate actions being taken
+        // Simulate actions being taken (UI updates)
         simulateEmergencyActions();
+        
+        // Trigger real emergency protocol (background actions)
+        triggerEmergencyProtocol();
 
         btnCancelAlert.setOnClickListener(v -> {
             showPinDialog();
@@ -298,62 +303,124 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
     }
 
     private void triggerEmergencyProtocol() {
-        // First, check for necessary permissions
+        // Check for necessary permissions for emergency actions
         if (checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED ||
-            checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             
-            requestPermissions(new String[]{Manifest.permission.SEND_SMS, Manifest.permission.CAMERA}, EMERGENCY_PERMISSIONS_REQUEST_CODE);
+            // Request permissions without blocking UI
+            requestPermissions(new String[]{
+                Manifest.permission.SEND_SMS, 
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO
+            }, EMERGENCY_PERMISSIONS_REQUEST_CODE);
         } else {
-            // Permissions are already granted
+            // Permissions are already granted, execute emergency actions in background
             executeEmergencyActions();
         }
     }
 
     private void executeEmergencyActions() {
-        // 1. Save alert to database
-        AppDatabase db = AppDatabase.getDatabase(this);
+        // Execute emergency actions in background thread to avoid blocking UI
         new Thread(() -> {
-            db.alertDao().insert(new Alert(System.currentTimeMillis(), "Shake Detected", 0.0, 0.0));
-            List<EmergencyContact> contacts = db.emergencyContactDao().getAllContactsBlocking();
-            runOnUiThread(() -> {
-                sendSmsToAll(contacts);
-                startRecordingService();
-                Toast.makeText(this, "EMERGENCY ALERT TRIGGERED!", Toast.LENGTH_LONG).show();
-                finish(); // Close the alert screen
-            });
+            try {
+                AppDatabase db = AppDatabase.getDatabase(this);
+                
+                // 1. Save alert to database
+                Alert alert = new Alert(System.currentTimeMillis(), "Shake Detected", 0.0, 0.0);
+                db.alertDao().insert(alert);
+                Log.d("AlertActivity", "Alert saved to database");
+                
+                // 2. Retrieve emergency contacts
+                List<EmergencyContact> contacts = db.emergencyContactDao().getAllContactsBlocking();
+                Log.d("AlertActivity", "Retrieved " + contacts.size() + " emergency contacts");
+                
+                // 3. Execute emergency actions on UI thread
+                runOnUiThread(() -> {
+                    try {
+                        sendSmsToAll(contacts);
+                        startRecordingService();
+                        Toast.makeText(this, "EMERGENCY ALERT TRIGGERED!", Toast.LENGTH_LONG).show();
+                        Log.d("AlertActivity", "Emergency actions completed successfully");
+                    } catch (Exception e) {
+                        Log.e("AlertActivity", "Error in UI emergency actions", e);
+                        Toast.makeText(this, "Emergency actions completed with some errors", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                Log.e("AlertActivity", "Error executing emergency actions", e);
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Error executing emergency actions", Toast.LENGTH_SHORT).show();
+                });
+            }
         }).start();
     }
 
     private void sendSmsToAll(List<EmergencyContact> contacts) {
-        SmsManager smsManager = SmsManager.getDefault();
-        String message = "Emergency Alert! This is a distress signal from a SafeWalk user. Last known location: [Location Data Here]";
-        for (EmergencyContact contact : contacts) {
-            smsManager.sendTextMessage(contact.phoneNumber, null, message, null, null);
+        try {
+            if (contacts == null || contacts.isEmpty()) {
+                Toast.makeText(this, "No emergency contacts found to notify.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            SmsManager smsManager = SmsManager.getDefault();
+            String message = "Emergency Alert! This is a distress signal from a SafeWalk user. Last known location: [Location Data Here]";
+            
+            int sentCount = 0;
+            for (EmergencyContact contact : contacts) {
+                try {
+                    smsManager.sendTextMessage(contact.phoneNumber, null, message, null, null);
+                    sentCount++;
+                    Log.d("AlertActivity", "SMS sent to: " + contact.name + " (" + contact.phoneNumber + ")");
+                } catch (Exception e) {
+                    Log.e("AlertActivity", "Failed to send SMS to " + contact.phoneNumber, e);
+                }
+            }
+            
+            Toast.makeText(this, "SMS alerts sent to " + sentCount + " of " + contacts.size() + " contacts.", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e("AlertActivity", "Error sending SMS alerts", e);
+            Toast.makeText(this, "Error sending SMS alerts", Toast.LENGTH_SHORT).show();
         }
-        Toast.makeText(this, "SMS alerts sent to " + contacts.size() + " contacts.", Toast.LENGTH_SHORT).show();
     }
 
     private void startRecordingService() {
-        Intent intent = new Intent(this, RecordingService.class);
-        startService(intent);
-        Toast.makeText(this, "Recording started.", Toast.LENGTH_SHORT).show();
+        try {
+            Intent intent = new Intent(this, RecordingService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                ContextCompat.startForegroundService(this, intent);
+            } else {
+                startService(intent);
+            }
+            Toast.makeText(this, "Emergency recording started.", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e("AlertActivity", "Error starting recording service", e);
+            Toast.makeText(this, "Error starting recording service", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == EMERGENCY_PERMISSIONS_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission was granted, proceed with actions
+            boolean allPermissionsGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allPermissionsGranted = false;
+                    break;
+                }
+            }
+            
+            if (allPermissionsGranted) {
+                // All permissions granted, execute emergency actions
                 executeEmergencyActions();
             } else {
-                Toast.makeText(this, "Permissions are required to send alerts and record video.", Toast.LENGTH_LONG).show();
-                finish();
+                // Some permissions denied, show warning but keep activity open
+                Toast.makeText(this, "Some permissions denied. Emergency features may not work properly.", Toast.LENGTH_LONG).show();
             }
         } else if (requestCode == CALL_PHONE_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // Permission was granted, retry the call action
-                // We'll need to store the last action and retry it
                 Toast.makeText(this, "Call permission granted. Please try again.", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(this, "Call permission is required to make emergency calls.", Toast.LENGTH_LONG).show();
