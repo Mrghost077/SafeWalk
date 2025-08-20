@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.telephony.SmsManager;
@@ -24,7 +23,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -37,25 +35,24 @@ import com.google.android.gms.location.LocationServices;
 import android.location.Location;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-
 import android.widget.FrameLayout;
+
+import com.s23010162.safewalk.utils.Constants;
+import com.s23010162.safewalk.utils.DateUtils;
+import com.s23010162.safewalk.utils.PermissionUtils;
 
 public class AlertActivity extends AppCompatActivity implements OnMapReadyCallback {
     public static final String EXTRA_ALERT_TYPE = "extra_alert_type";
 
-    private static final int EMERGENCY_PERMISSIONS_REQUEST_CODE = 123;
-    private static final int CALL_PHONE_PERMISSION_REQUEST_CODE = 456;
-    private static final String EMERGENCY_SERVICES_NUMBER = "tel:"; // Placeholder for 119 or other services
     private TextView tvTimer;
     private Button btnCancelAlert, btnRecordingStatus, btnCallEmergency, btnHideAlert;
     private CheckBox cbContactsAlerted, cbLocationShared, cbRecordingStarted;
-    private CountDownTimer countDownTimer;
     private PreferencesManager preferencesManager;
     private Handler timerHandler = new Handler(Looper.getMainLooper());
     private Runnable timerRunnable;
     private long startTime;
-    private ImageView imgAppLogo, imgRecordingDot, imgContactsAlerted, imgLocationShared, imgRecordingStarted;
-    private TextView tvEmergencyStatus, tvReassure, tvRecordingStatus;
+    private ImageView imgRecordingDot, imgContactsAlerted, imgLocationShared, imgRecordingStarted;
+    private TextView tvRecordingStatus;
     private MapView mapView;
     private GoogleMap googleMap;
     private FusedLocationProviderClient fusedLocationClient;
@@ -68,13 +65,10 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
         setContentView(R.layout.activity_alert);
 
         preferencesManager = new PreferencesManager(this);
-        imgAppLogo = findViewById(R.id.imgAppLogo);
         imgRecordingDot = findViewById(R.id.imgRecordingDot);
         imgContactsAlerted = findViewById(R.id.imgContactsAlerted);
         imgLocationShared = findViewById(R.id.imgLocationShared);
         imgRecordingStarted = findViewById(R.id.imgRecordingStarted);
-        tvEmergencyStatus = findViewById(R.id.tvEmergencyStatus);
-        tvReassure = findViewById(R.id.tvReassure);
         tvRecordingStatus = findViewById(R.id.tvRecordingStatus);
         btnCallEmergency = findViewById(R.id.btnCallEmergency);
         btnHideAlert = findViewById(R.id.btnHideAlert);
@@ -145,16 +139,16 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
     }
 
     private void ensureCallPermission(Runnable action) {
-        if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+        if (!PermissionUtils.hasCallPhonePermission(this)) {
             pendingCallAction = action; // Save the action to run later
-            requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, CALL_PHONE_PERMISSION_REQUEST_CODE);
+            requestPermissions(new String[]{Manifest.permission.CALL_PHONE}, Constants.CALL_PHONE_PERMISSION_REQUEST_CODE);
         } else {
             action.run(); // Permission already granted, run immediately
         }
     }
 
     private void callEmergencyServices() {
-        ensureCallPermission(() -> initiateCall(EMERGENCY_SERVICES_NUMBER));
+        ensureCallPermission(() -> initiateCall(Constants.EMERGENCY_SERVICES_NUMBER));
     }
 
     private void callEmergencyContact() {
@@ -168,8 +162,7 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
                         String phoneNumber = "tel:" + contact.phoneNumber;
                         initiateCall(phoneNumber);
                     } else {
-                        String testNumber = "tel:+1234567890"; // Test number
-                        initiateCall(testNumber);
+                        initiateCall(Constants.TEST_PHONE_NUMBER);
                         Toast.makeText(this, "No emergency contacts found. Using test number.", Toast.LENGTH_SHORT).show();
                     }
                 });
@@ -212,12 +205,12 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
             
             // Validate PIN input
             if (enteredPin.isEmpty()) {
-                Toast.makeText(this, "Please enter your PIN", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, Constants.VALIDATION_ENTER_PIN, Toast.LENGTH_SHORT).show();
                 return;
             }
             
-            if (enteredPin.length() != 4 || !enteredPin.matches("\\d{4}")) {
-                Toast.makeText(this, "PIN must be 4 digits", Toast.LENGTH_SHORT).show();
+            if (enteredPin.length() != Constants.PIN_LENGTH || !enteredPin.matches(Constants.PIN_REGEX)) {
+                Toast.makeText(this, Constants.VALIDATION_PIN_4_DIGITS, Toast.LENGTH_SHORT).show();
                 etPin.setText("");
                 return;
             }
@@ -227,9 +220,9 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
                     dialog.dismiss();
                     stopTimer();
                     finish();
-                    Toast.makeText(this, "Alert Canceled Successfully", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, Constants.SUCCESS_ALERT_CANCELED, Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, Constants.VALIDATION_INCORRECT_PIN, Toast.LENGTH_SHORT).show();
                     etPin.setText("");
                 }
             } catch (Exception e) {
@@ -247,8 +240,8 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
     private void animateRecordingDot() {
         if (imgRecordingDot != null) {
             Animation blink = new AlphaAnimation(0.0f, 1.0f);
-            blink.setDuration(500);
-            blink.setStartOffset(20);
+            blink.setDuration(Constants.RECORDING_DOT_ANIMATION_DURATION);
+            blink.setStartOffset(Constants.RECORDING_DOT_ANIMATION_OFFSET);
             blink.setRepeatMode(Animation.REVERSE);
             blink.setRepeatCount(Animation.INFINITE);
             imgRecordingDot.startAnimation(blink);
@@ -268,7 +261,7 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
             imgContactsAlerted.setImageResource(android.R.drawable.checkbox_on_background);
             cbLocationShared.setChecked(true);
             imgLocationShared.setImageResource(android.R.drawable.checkbox_on_background);
-        }, 1500); // 1.5 second delay
+        }, Constants.EMERGENCY_ACTIONS_DELAY);
     }
 
     private void startRecordingTimer() {
@@ -276,10 +269,8 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
             @Override
             public void run() {
                 long millis = System.currentTimeMillis() - startTime;
-                long minutes = TimeUnit.MILLISECONDS.toMinutes(millis);
-                long seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60;
-                btnRecordingStatus.setText(String.format(Locale.getDefault(), "RECORDING: %02d:%02d", minutes, seconds));
-                timerHandler.postDelayed(this, 1000);
+                btnRecordingStatus.setText("RECORDING: " + DateUtils.formatTime(millis));
+                timerHandler.postDelayed(this, Constants.TIMER_UPDATE_INTERVAL);
             }
         };
         timerHandler.post(timerRunnable);
@@ -296,10 +287,8 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
             @Override
             public void run() {
                 long millis = System.currentTimeMillis() - startTime;
-                long minutes = TimeUnit.MILLISECONDS.toMinutes(millis);
-                long seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60;
-                tvTimer.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
-                timerHandler.postDelayed(this, 1000);
+                tvTimer.setText(DateUtils.formatTime(millis));
+                timerHandler.postDelayed(this, Constants.TIMER_UPDATE_INTERVAL);
             }
         };
         timerHandler.post(timerRunnable);
@@ -307,16 +296,9 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
 
     private void triggerEmergencyProtocol() {
         // Check for necessary permissions for emergency actions
-        if (checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED ||
-            checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
-            checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            
+        if (!PermissionUtils.hasAllEmergencyPermissions(this)) {
             // Request permissions without blocking UI
-            requestPermissions(new String[]{
-                Manifest.permission.SEND_SMS, 
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO
-            }, EMERGENCY_PERMISSIONS_REQUEST_CODE);
+            requestPermissions(PermissionUtils.getEmergencyPermissions(), Constants.EMERGENCY_PERMISSIONS_REQUEST_CODE);
         } else {
             // Permissions are already granted, execute emergency actions in background
             executeEmergencyActions();
@@ -419,7 +401,7 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (requestCode == EMERGENCY_PERMISSIONS_REQUEST_CODE) {
+        if (requestCode == Constants.EMERGENCY_PERMISSIONS_REQUEST_CODE) {
             boolean allPermissionsGranted = true;
             for (int result : grantResults) {
                 if (result != PackageManager.PERMISSION_GRANTED) {
@@ -434,7 +416,7 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
                 Toast.makeText(this, "Some permissions denied. Emergency features may not work properly.", Toast.LENGTH_LONG).show();
             }
 
-        } else if (requestCode == CALL_PHONE_PERMISSION_REQUEST_CODE) {
+        } else if (requestCode == Constants.CALL_PHONE_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // Permission granted, run pending call action
                 if (pendingCallAction != null) {
@@ -442,7 +424,7 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
                     pendingCallAction = null; // Clear after running
                 }
             } else {
-                Toast.makeText(this, "Call permission is required to make emergency calls.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, Constants.ERROR_CALL_PERMISSION, Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -459,7 +441,7 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
                     LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
                     googleMap.clear();
                     googleMap.addMarker(new MarkerOptions().position(latLng).title("My Location"));
-                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16));
+                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, Constants.DEFAULT_MAP_ZOOM));
                 }
             });
         } else {
@@ -484,9 +466,7 @@ public class AlertActivity extends AppCompatActivity implements OnMapReadyCallba
     protected void onDestroy() {
         if (mapView != null) mapView.onDestroy();
         super.onDestroy();
-        if (countDownTimer != null) {
-            countDownTimer.cancel();
-        }
+
         stopTimer();
         // Reset the flag so a new alert can be triggered
         ShakeDetectorService.setAlertInactive();

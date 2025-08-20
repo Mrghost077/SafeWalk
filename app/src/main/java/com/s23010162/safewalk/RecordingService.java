@@ -18,9 +18,9 @@ import androidx.core.app.NotificationCompat;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Locale;
+
+import com.s23010162.safewalk.utils.DateUtils;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -106,7 +106,7 @@ public class RecordingService extends Service {
             Log.d(TAG, "Emergency audio recording started");
 
             // Create emergency recording file
-            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+            String timeStamp = DateUtils.formatTimestamp(new Date());
             String fileName = "SAFEWALK_EMERGENCY_" + timeStamp + ".3gp";
 
             File mediaDir = new File(getExternalFilesDir(null), "SafeWalk");

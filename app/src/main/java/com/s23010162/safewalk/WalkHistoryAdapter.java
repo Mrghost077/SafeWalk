@@ -8,12 +8,12 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.TimeUnit;
+
+import com.s23010162.safewalk.utils.DateUtils;
 
 public class WalkHistoryAdapter extends RecyclerView.Adapter<WalkHistoryAdapter.WalkViewHolder> {
 
@@ -54,13 +54,10 @@ public class WalkHistoryAdapter extends RecyclerView.Adapter<WalkHistoryAdapter.
 
         public void bind(Walk walk) {
             // Format Date
-            SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault());
-            tvWalkDate.setText(dateFormat.format(new Date(walk.startTime)));
+            tvWalkDate.setText(DateUtils.formatWalkDate(new Date(walk.startTime)));
 
             // Format Duration
-            long minutes = TimeUnit.MILLISECONDS.toMinutes(walk.duration);
-            long seconds = TimeUnit.MILLISECONDS.toSeconds(walk.duration) % 60;
-            tvWalkDuration.setText(String.format(Locale.getDefault(), "Duration: %02d:%02d", minutes, seconds));
+            tvWalkDuration.setText("Duration: " + DateUtils.formatTime(walk.duration));
         }
     }
 } 

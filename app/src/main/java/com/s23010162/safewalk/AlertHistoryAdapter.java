@@ -8,15 +8,14 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.text.SimpleDateFormat;
 import java.util.List;
-import java.util.Locale;
 import java.util.Date;
+
+import com.s23010162.safewalk.utils.DateUtils;
 
 public class AlertHistoryAdapter extends RecyclerView.Adapter<AlertHistoryAdapter.AlertViewHolder> {
 
     private List<Alert> alerts;
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault());
 
     public AlertHistoryAdapter(List<Alert> alerts) {
         this.alerts = alerts;
@@ -32,7 +31,7 @@ public class AlertHistoryAdapter extends RecyclerView.Adapter<AlertHistoryAdapte
     @Override
     public void onBindViewHolder(@NonNull AlertViewHolder holder, int position) {
         Alert alert = alerts.get(position);
-        holder.tvTimestamp.setText(dateFormat.format(new Date(alert.timestamp)));
+        holder.tvTimestamp.setText(DateUtils.formatDateTime(new Date(alert.timestamp)));
         holder.tvLocation.setText("Lat: " + alert.latitude + ", Lon: " + alert.longitude);
         holder.tvType.setText("Type: " + (alert.type == null ? "Unknown" : alert.type));
         holder.tvRecordingStatus.setText(alert.recordingStarted ? "Recording: Started" : "Recording: Not started");

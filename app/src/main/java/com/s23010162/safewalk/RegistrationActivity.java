@@ -23,6 +23,8 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.s23010162.safewalk.R;
 import com.s23010162.safewalk.UserProfile;
 import com.s23010162.safewalk.PreferencesManager;
+import com.s23010162.safewalk.utils.Constants;
+import com.s23010162.safewalk.utils.PermissionUtils;
 
 /**
  * Registration Activity for user profile setup
@@ -31,7 +33,6 @@ import com.s23010162.safewalk.PreferencesManager;
 public class RegistrationActivity extends AppCompatActivity {
 
     private static final String TAG = "RegistrationActivity";
-    private static final int PERMISSION_REQUEST_CODE = 1001;
 
     // UI Components
     private TextInputLayout tilFullName, tilEmailAddress, tilPhoneNumber, tilEmergencyPin, tilConfirmPin;
@@ -155,8 +156,8 @@ public class RegistrationActivity extends AppCompatActivity {
 
         // Validate full name
         String fullName = etFullName.getText().toString().trim();
-        if (fullName.isEmpty() || fullName.length() < 2) {
-            tilFullName.setError("Please enter a valid full name");
+        if (fullName.isEmpty() || fullName.length() < Constants.MIN_NAME_LENGTH) {
+            tilFullName.setError(Constants.VALIDATION_ENTER_NAME);
             isValid = false;
         } else {
             tilFullName.setError(null);
@@ -165,7 +166,7 @@ public class RegistrationActivity extends AppCompatActivity {
         // Validate email
         String email = etEmailAddress.getText().toString().trim();
         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            tilEmailAddress.setError("Please enter a valid email address");
+            tilEmailAddress.setError(Constants.VALIDATION_ENTER_EMAIL);
             isValid = false;
         } else {
             tilEmailAddress.setError(null);
@@ -174,8 +175,8 @@ public class RegistrationActivity extends AppCompatActivity {
         // Validate phone number
         String phone = etPhoneNumber.getText().toString().trim();
         String cleanPhone = phone.replaceAll("[^\\d]", "");
-        if (cleanPhone.length() < 10) {
-            tilPhoneNumber.setError("Please enter a valid phone number");
+        if (cleanPhone.length() < Constants.MIN_PHONE_LENGTH) {
+            tilPhoneNumber.setError(Constants.VALIDATION_ENTER_PHONE);
             isValid = false;
         } else {
             tilPhoneNumber.setError(null);
@@ -183,8 +184,8 @@ public class RegistrationActivity extends AppCompatActivity {
 
         // Validate emergency PIN
         String emergencyPin = etEmergencyPin.getText().toString().trim();
-        if (emergencyPin.length() != 4 || !emergencyPin.matches("\\d{4}")) {
-            tilEmergencyPin.setError("PIN must be exactly 4 digits");
+        if (emergencyPin.length() != Constants.PIN_LENGTH || !emergencyPin.matches(Constants.PIN_REGEX)) {
+            tilEmergencyPin.setError(Constants.VALIDATION_PIN_4_DIGITS);
             isValid = false;
         } else {
             tilEmergencyPin.setError(null);
@@ -193,9 +194,9 @@ public class RegistrationActivity extends AppCompatActivity {
         // Validate PIN confirmation
         String confirmPin = etConfirmPin.getText().toString().trim();
         if (!confirmPin.equals(emergencyPin)) {
-            tilConfirmPin.setError("PINs do not match");
+            tilConfirmPin.setError(Constants.VALIDATION_PINS_MATCH);
             isValid = false;
-        } else if (emergencyPin.length() == 4) {
+        } else if (emergencyPin.length() == Constants.PIN_LENGTH) {
             tilConfirmPin.setError(null);
         }
 
@@ -210,7 +211,7 @@ public class RegistrationActivity extends AppCompatActivity {
         btnCreateAccountBottom.setEnabled(enabled);
 
         // Update button appearance
-        float alpha = enabled ? 1.0f : 0.5f;
+        float alpha = enabled ? Constants.ENABLED_ALPHA : Constants.DISABLED_ALPHA;
         btnCreateAccountBottom.setAlpha(alpha);
     }
 
@@ -219,7 +220,7 @@ public class RegistrationActivity extends AppCompatActivity {
      */
     private void handleCreateAccount() {
         if (!isFormValid) {
-            Toast.makeText(this, "Please fix all errors before proceeding", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, Constants.VALIDATION_FIX_ERRORS, Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -233,7 +234,7 @@ public class RegistrationActivity extends AppCompatActivity {
         boolean saveSuccess = preferencesManager.saveUserProfile(userProfile);
 
         if (saveSuccess) {
-            Toast.makeText(this, "Account created successfully!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, Constants.SUCCESS_ACCOUNT_CREATED, Toast.LENGTH_SHORT).show();
 
             // Navigate to main activity
             navigateToMainActivity();
@@ -274,13 +275,8 @@ public class RegistrationActivity extends AppCompatActivity {
      * Request location permission
      */
     private void requestLocationPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION},
-                    PERMISSION_REQUEST_CODE);
+        if (!PermissionUtils.hasLocationPermission(this)) {
+            ActivityCompat.requestPermissions(this, PermissionUtils.getLocationPermissions(), Constants.REGISTRATION_PERMISSION_REQUEST_CODE);
         }
     }
 
@@ -288,14 +284,8 @@ public class RegistrationActivity extends AppCompatActivity {
      * Request camera and microphone permissions
      */
     private void requestCameraPermission() {
-        String[] permissions = {
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-        };
-
         boolean needsPermission = false;
-        for (String permission : permissions) {
+        for (String permission : PermissionUtils.getCameraAudioPermissions()) {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
                 needsPermission = true;
                 break;
@@ -303,7 +293,7 @@ public class RegistrationActivity extends AppCompatActivity {
         }
 
         if (needsPermission) {
-            ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE);
+            ActivityCompat.requestPermissions(this, PermissionUtils.getCameraAudioPermissions(), Constants.REGISTRATION_PERMISSION_REQUEST_CODE);
         }
     }
 
@@ -315,7 +305,7 @@ public class RegistrationActivity extends AppCompatActivity {
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (requestCode == PERMISSION_REQUEST_CODE) {
+        if (requestCode == Constants.REGISTRATION_PERMISSION_REQUEST_CODE) {
             boolean allGranted = true;
             for (int result : grantResults) {
                 if (result != PackageManager.PERMISSION_GRANTED) {

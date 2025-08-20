@@ -30,17 +30,18 @@ import androidx.navigation.fragment.NavHostFragment;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.text.SimpleDateFormat;
-import java.util.Locale;
+import java.util.Date;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.s23010162.safewalk.utils.Constants;
+import com.s23010162.safewalk.utils.DateUtils;
+import com.s23010162.safewalk.utils.PermissionUtils;
+
 public class RecordFragment extends Fragment {
 
     private static final String TAG = "RecordFragment";
-    private static final int REQUEST_CODE_PERMISSIONS = 10;
-    private static final String[] REQUIRED_PERMISSIONS = new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO};
 
     private PreviewView previewView;
     private TextView tvTimer;
@@ -58,11 +59,8 @@ public class RecordFragment extends Fragment {
         @Override
         public void run() {
             long millis = System.currentTimeMillis() - startTime;
-            int seconds = (int) (millis / 1000);
-            int minutes = seconds / 60;
-            seconds = seconds % 60;
-            tvTimer.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
-            timerHandler.postDelayed(this, 500);
+            tvTimer.setText(DateUtils.formatTime(millis));
+            timerHandler.postDelayed(this, Constants.TIMER_UPDATE_INTERVAL / 2);
         }
     };
 
@@ -85,11 +83,11 @@ public class RecordFragment extends Fragment {
         cameraExecutor = Executors.newSingleThreadExecutor();
         appDatabase = AppDatabase.getDatabase(requireContext());
 
-        if (allPermissionsGranted()) {
+        if (PermissionUtils.hasCameraPermission(requireContext()) && PermissionUtils.hasAudioPermission(requireContext())) {
             startCamera();
         } else {
             ActivityCompat.requestPermissions(
-                    requireActivity(), REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS);
+                    requireActivity(), PermissionUtils.getCameraAudioPermissions(), Constants.REGISTRATION_PERMISSION_REQUEST_CODE);
         }
 
         btnRecord.setOnClickListener(v -> {
@@ -150,8 +148,7 @@ public class RecordFragment extends Fragment {
         timerHandler.postDelayed(timerRunnable, 0);
 
         String name = "SafeWalk-recording-" +
-                new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US)
-                        .format(System.currentTimeMillis());
+                DateUtils.formatForFileName(new Date(System.currentTimeMillis()));
 
         ContentValues contentValues = new ContentValues();
         contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
@@ -197,8 +194,8 @@ public class RecordFragment extends Fragment {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (allPermissionsGranted()) {
+        if (requestCode == Constants.REGISTRATION_PERMISSION_REQUEST_CODE) {
+            if (PermissionUtils.hasCameraPermission(requireContext()) && PermissionUtils.hasAudioPermission(requireContext())) {
                 startCamera();
             } else {
                 Toast.makeText(requireContext(),
@@ -207,16 +204,6 @@ public class RecordFragment extends Fragment {
                 // Optionally, navigate back or disable functionality
             }
         }
-    }
-
-    private boolean allPermissionsGranted() {
-        for (String permission : REQUIRED_PERMISSIONS) {
-            if (ContextCompat.checkSelfPermission(
-                    requireContext(), permission) != PackageManager.PERMISSION_GRANTED) {
-                return false;
-            }
-        }
-        return true;
     }
 
     private void saveRecordingToDatabase(String filePath) {

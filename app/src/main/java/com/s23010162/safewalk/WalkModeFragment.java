@@ -38,17 +38,17 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
-public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
+import com.s23010162.safewalk.utils.Constants;
+import com.s23010162.safewalk.utils.DateUtils;
+import com.s23010162.safewalk.utils.PermissionUtils;
+import com.s23010162.safewalk.utils.SosDialogUtils;
 
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 2;
-    private static final int SMS_PERMISSION_REQUEST_CODE = 102;
+public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
 
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
@@ -63,7 +63,6 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
     private Handler timerHandler = new Handler(Looper.getMainLooper());
     private Runnable timerRunnable;
     private long startTime;
-    private CountDownTimer sosCountDownTimer;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -105,14 +104,28 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
     }
 
     private void setupUI() {
-        tvWalkStartedTime.setText(new SimpleDateFormat("hh:mm a", Locale.getDefault()).format(new Date(startTime)));
+        tvWalkStartedTime.setText(DateUtils.formatTimeOnly(startTime));
         btnStopWalk.setOnClickListener(v -> {
             stopLocationUpdates();
             NavHostFragment.findNavController(this).navigateUp();
         });
         btnShareLocation.setOnClickListener(v -> shareLocation());
         btnCheckIn.setOnClickListener(v -> checkIn());
-        btnEmergencyFromWalk.setOnClickListener(v -> showSosCountdown());
+        btnEmergencyFromWalk.setOnClickListener(v -> {
+            SosDialogUtils.showSosCountdown(requireContext(), new SosDialogUtils.SosDialogCallback() {
+                @Override
+                public void onSosTriggered() {
+                    Intent intent = SosDialogUtils.createAlertActivityIntent(requireActivity(), "SOS Triggered");
+                    startActivity(intent);
+                    stopLocationUpdates();
+                }
+
+                @Override
+                public void onSosCancelled() {
+                    // SOS was cancelled by user
+                }
+            });
+        });
         startDurationTimer();
     }
 
@@ -121,18 +134,16 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
             @Override
             public void run() {
                 long millis = System.currentTimeMillis() - startTime;
-                long minutes = TimeUnit.MILLISECONDS.toMinutes(millis);
-                long seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60;
-                tvDuration.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
-                timerHandler.postDelayed(this, 1000);
+                tvDuration.setText(DateUtils.formatTime(millis));
+                timerHandler.postDelayed(this, Constants.TIMER_UPDATE_INTERVAL);
             }
         };
         timerHandler.post(timerRunnable);
     }
 
     private void checkLocationPermissionAndStartTracking() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
+        if (!PermissionUtils.hasLocationPermission(requireContext())) {
+            requestPermissions(PermissionUtils.getLocationPermissions(), Constants.LOCATION_PERMISSION_REQUEST_CODE);
         } else {
             startLocationUpdates();
         }
@@ -140,8 +151,8 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
 
     private void startLocationUpdates() {
         LocationRequest locationRequest = LocationRequest.create();
-        locationRequest.setInterval(30000);
-        locationRequest.setFastestInterval(15000);
+        locationRequest.setInterval(Constants.LOCATION_UPDATE_INTERVAL);
+        locationRequest.setFastestInterval(Constants.LOCATION_FASTEST_INTERVAL);
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         locationCallback = new LocationCallback() {
             @Override
@@ -153,7 +164,7 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
                 }
             }
         };
-        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (!PermissionUtils.hasLocationPermission(requireContext())) {
             return;
         }
         fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
@@ -164,7 +175,7 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
             LatLng currentLatLng = new LatLng(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
             googleMap.clear(); // Clear previous markers
             googleMap.addMarker(new MarkerOptions().position(currentLatLng).title("My Location"));
-            googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 16));
+            googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, Constants.DEFAULT_MAP_ZOOM));
         }
     }
 
@@ -201,8 +212,8 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
     }
 
     private void sendSms(String prefix) {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.SEND_SMS}, SMS_PERMISSION_REQUEST_CODE);
+        if (!PermissionUtils.hasSmsPermission(requireContext())) {
+            requestPermissions(new String[]{Manifest.permission.SEND_SMS}, Constants.SMS_PERMISSION_REQUEST_CODE);
         } else {
             executeSendSms(prefix);
         }
@@ -233,139 +244,16 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
         });
     }
 
-    private void showSosCountdown() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.dialog_sos_countdown, null);
-        builder.setView(dialogView);
-        builder.setCancelable(false);
 
-        final AlertDialog dialog = builder.create();
-        dialog.show();
-
-        final TextView tvCountdown = dialogView.findViewById(R.id.tvCountdown);
-        Button btnCancelSos = dialogView.findViewById(R.id.btnCancelSos);
-
-        final long countdownMillis = 5000;
-        final long[] timeLeft = {countdownMillis};
-        final boolean[] isPinDialogOpen = {false};
-
-        sosCountDownTimer = new CountDownTimer(timeLeft[0], 1000) {
-            @Override
-            public void onTick(long millisUntilFinished) {
-                timeLeft[0] = millisUntilFinished;
-                tvCountdown.setText(String.valueOf(millisUntilFinished / 1000));
-            }
-
-            @Override
-            public void onFinish() {
-                if (!isPinDialogOpen[0]) {
-                    dialog.dismiss();
-                    Intent intent = new Intent(getActivity(), AlertActivity.class);
-                    intent.putExtra(AlertActivity.EXTRA_ALERT_TYPE, "SOS Triggered");
-                    startActivity(intent);
-                    stopLocationUpdates();
-                }
-            }
-        }.start();
-
-        btnCancelSos.setOnClickListener(v -> {
-            sosCountDownTimer.cancel();
-            isPinDialogOpen[0] = true;
-            showPinEntryDialog(dialog, timeLeft[0]);
-        });
-    }
-
-    private void showPinEntryDialog(AlertDialog sosDialog, long timeLeft) {
-        AlertDialog.Builder pinBuilder = new AlertDialog.Builder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View pinView = inflater.inflate(R.layout.dialog_pin_entry, null);
-        pinBuilder.setView(pinView);
-        pinBuilder.setCancelable(false);
-        final AlertDialog pinDialog = pinBuilder.create();
-        pinDialog.show();
-
-        EditText etPin = pinView.findViewById(R.id.etPin);
-        Button btnSubmit = pinView.findViewById(R.id.btnSubmitPin);
-        Button btnCancel = pinView.findViewById(R.id.btnCancelPin);
-
-        PreferencesManager preferencesManager = new PreferencesManager(requireContext());
-
-        btnSubmit.setOnClickListener(v -> {
-            String enteredPin = etPin.getText().toString().trim();
-            if (enteredPin.isEmpty()) {
-                Toast.makeText(getContext(), "Please enter your PIN", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (enteredPin.length() != 4 || !enteredPin.matches("\\d{4}")) {
-                Toast.makeText(getContext(), "PIN must be 4 digits", Toast.LENGTH_SHORT).show();
-                etPin.setText("");
-                return;
-            }
-            if (preferencesManager.verifyEmergencyPin(enteredPin)) {
-                pinDialog.dismiss();
-                sosDialog.dismiss();
-                Toast.makeText(getContext(), "SOS Canceled", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(getContext(), "Incorrect PIN", Toast.LENGTH_SHORT).show();
-                etPin.setText("");
-            }
-        });
-
-        btnCancel.setOnClickListener(v -> {
-            pinDialog.dismiss();
-            // Resume countdown if time left
-            if (timeLeft > 0) {
-                showSosCountdownWithTimeLeft(sosDialog, timeLeft);
-            }
-        });
-    }
-
-    private void showSosCountdownWithTimeLeft(AlertDialog oldDialog, long timeLeft) {
-        if (oldDialog != null && oldDialog.isShowing()) oldDialog.dismiss();
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.dialog_sos_countdown, null);
-        builder.setView(dialogView);
-        builder.setCancelable(false);
-        final AlertDialog dialog = builder.create();
-        dialog.show();
-        final TextView tvCountdown = dialogView.findViewById(R.id.tvCountdown);
-        Button btnCancelSos = dialogView.findViewById(R.id.btnCancelSos);
-        final long[] timeLeftArr = {timeLeft};
-        final boolean[] isPinDialogOpen = {false};
-        sosCountDownTimer = new CountDownTimer(timeLeftArr[0], 1000) {
-            @Override
-            public void onTick(long millisUntilFinished) {
-                timeLeftArr[0] = millisUntilFinished;
-                tvCountdown.setText(String.valueOf(millisUntilFinished / 1000));
-            }
-            @Override
-            public void onFinish() {
-                if (!isPinDialogOpen[0]) {
-                    dialog.dismiss();
-                    Intent intent = new Intent(getActivity(), AlertActivity.class);
-                    intent.putExtra(AlertActivity.EXTRA_ALERT_TYPE, "SOS Triggered");
-                    startActivity(intent);
-                    stopLocationUpdates();
-                }
-            }
-        }.start();
-        btnCancelSos.setOnClickListener(v -> {
-            sosCountDownTimer.cancel();
-            isPinDialogOpen[0] = true;
-            showPinEntryDialog(dialog, timeLeftArr[0]);
-        });
-    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+        if (requestCode == Constants.LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startLocationUpdates();
                 if (googleMap != null) {
-                    if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    if (!PermissionUtils.hasLocationPermission(requireContext())) {
                         return;
                     }
                     googleMap.setMyLocationEnabled(true);
@@ -374,11 +262,11 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
                 Toast.makeText(getContext(), "Location permission is required for Walk Mode.", Toast.LENGTH_LONG).show();
                 NavHostFragment.findNavController(this).navigateUp();
             }
-        } else if (requestCode == SMS_PERMISSION_REQUEST_CODE) {
+        } else if (requestCode == Constants.SMS_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(getContext(), "SMS Permission granted. You can now send messages.", Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(getContext(), "SMS Permission denied.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), Constants.ERROR_SMS_PERMISSION, Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -417,9 +305,7 @@ public class WalkModeFragment extends Fragment implements OnMapReadyCallback {
             }
             googleMap.setMyLocationEnabled(false);
         }
-        if(sosCountDownTimer != null) {
-            sosCountDownTimer.cancel();
-        }
+
         mapView.onDestroy();
     }
 

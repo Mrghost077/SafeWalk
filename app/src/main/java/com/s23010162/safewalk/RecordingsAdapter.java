@@ -6,15 +6,14 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
+
+import com.s23010162.safewalk.utils.DateUtils;
 
 public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.RecordingViewHolder> {
 
     private List<Recording> recordings;
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
 
     public RecordingsAdapter(List<Recording> recordings) {
         this.recordings = recordings;
@@ -40,8 +39,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Re
     }
 
     private String formatTimestamp(long timestamp) {
-        SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy - HH:mm", Locale.getDefault());
-        return sdf.format(new Date(timestamp));
+        return DateUtils.formatDateTime24H(new Date(timestamp));
     }
 
     public void setRecordings(List<Recording> recordings) {

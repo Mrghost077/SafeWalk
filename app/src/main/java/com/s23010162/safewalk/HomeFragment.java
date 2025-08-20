@@ -41,16 +41,18 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class HomeFragment extends Fragment {
+import com.s23010162.safewalk.utils.Constants;
+import com.s23010162.safewalk.utils.DateUtils;
+import com.s23010162.safewalk.utils.PermissionUtils;
+import com.s23010162.safewalk.utils.SosDialogUtils;
 
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1;
+public class HomeFragment extends Fragment {
 
     private FusedLocationProviderClient fusedLocationClient;
     private TextView tvCurrentLocation;
     private TextView tvSafetyStatusDetails;
     private AppDatabase appDatabase;
     private ExecutorService executorService;
-    private CountDownTimer sosCountDownTimer;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -79,7 +81,19 @@ public class HomeFragment extends Fragment {
         Button btnAlertHistory = view.findViewById(R.id.btnAlertHistory);
 
         btnEmergencySos.setOnClickListener(v -> {
-            showSosCountdown();
+            SosDialogUtils.showSosCountdown(requireContext(), new SosDialogUtils.SosDialogCallback() {
+                @Override
+                public void onSosTriggered() {
+                    sendSmsToEmergencyContacts();
+                    Intent intent = SosDialogUtils.createAlertActivityIntent(requireActivity(), "SOS Triggered");
+                    startActivity(intent);
+                }
+
+                @Override
+                public void onSosCancelled() {
+                    // SOS was cancelled by user
+                }
+            });
         });
 
         btnStartWalk.setOnClickListener(v -> {
@@ -101,16 +115,16 @@ public class HomeFragment extends Fragment {
     }
 
     private void checkLocationPermission() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
+        if (!PermissionUtils.hasLocationPermission(requireContext())) {
+            requestPermissions(PermissionUtils.getLocationPermissions(), Constants.LOCATION_PERMISSION_REQUEST_CODE);
         } else {
             getCurrentLocation();
         }
     }
 
     private void getCurrentLocation() {
-        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            tvCurrentLocation.setText("Location permission not granted");
+        if (!PermissionUtils.hasLocationPermission(requireContext())) {
+            tvCurrentLocation.setText(Constants.ERROR_LOCATION_PERMISSION);
             return;
         }
         
@@ -132,12 +146,12 @@ public class HomeFragment extends Fragment {
     private void requestNewLocationData() {
         LocationRequest locationRequest = LocationRequest.create();
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        locationRequest.setInterval(10000);
-        locationRequest.setFastestInterval(5000);
-        locationRequest.setNumUpdates(1);
+        locationRequest.setInterval(Constants.LOCATION_REQUEST_INTERVAL);
+        locationRequest.setFastestInterval(Constants.LOCATION_REQUEST_FASTEST_INTERVAL);
+        locationRequest.setNumUpdates(Constants.SINGLE_LOCATION_UPDATE);
 
-        if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            tvCurrentLocation.setText("Location permission not granted");
+        if (!PermissionUtils.hasLocationPermission(requireContext())) {
+            tvCurrentLocation.setText(Constants.ERROR_LOCATION_PERMISSION);
             return;
         }
         
@@ -178,148 +192,24 @@ public class HomeFragment extends Fragment {
 
             requireActivity().runOnUiThread(() -> {
                 String gpsStatus = isGpsEnabled ? "Connected" : "Disconnected";
-                tvSafetyStatusDetails.setText(String.format(Locale.getDefault(), "GPS: %s | Contacts: %d added", gpsStatus, contactCount));
+                tvSafetyStatusDetails.setText(String.format("GPS: %s | Contacts: %d added", gpsStatus, contactCount));
             });
         });
     }
 
-    private void showSosCountdown() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.dialog_sos_countdown, null);
-        builder.setView(dialogView);
-        builder.setCancelable(false);
 
-        final AlertDialog dialog = builder.create();
-        dialog.show();
-
-        final TextView tvCountdown = dialogView.findViewById(R.id.tvCountdown);
-        Button btnCancelSos = dialogView.findViewById(R.id.btnCancelSos);
-
-        final long countdownMillis = 5000;
-        final long[] timeLeft = {countdownMillis};
-        final boolean[] isPinDialogOpen = {false};
-
-        sosCountDownTimer = new CountDownTimer(timeLeft[0], 1000) {
-            @Override
-            public void onTick(long millisUntilFinished) {
-                timeLeft[0] = millisUntilFinished;
-                tvCountdown.setText(String.valueOf(millisUntilFinished / 1000));
-            }
-
-            @Override
-            public void onFinish() {
-                if (!isPinDialogOpen[0]) {
-                    dialog.dismiss();
-                    sendSmsToEmergencyContacts();
-                    Intent intent = new Intent(getActivity(), AlertActivity.class);
-                    intent.putExtra(AlertActivity.EXTRA_ALERT_TYPE, "SOS Triggered");
-                    startActivity(intent);
-                }
-            }
-        }.start();
-
-        btnCancelSos.setOnClickListener(v -> {
-            sosCountDownTimer.cancel();
-            isPinDialogOpen[0] = true;
-            showPinEntryDialog(dialog, timeLeft[0]);
-        });
-    }
-
-    private void showPinEntryDialog(AlertDialog sosDialog, long timeLeft) {
-        AlertDialog.Builder pinBuilder = new AlertDialog.Builder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View pinView = inflater.inflate(R.layout.dialog_pin_entry, null);
-        pinBuilder.setView(pinView);
-        pinBuilder.setCancelable(false);
-        final AlertDialog pinDialog = pinBuilder.create();
-        pinDialog.show();
-
-        EditText etPin = pinView.findViewById(R.id.etPin);
-        Button btnSubmit = pinView.findViewById(R.id.btnSubmitPin);
-        Button btnCancel = pinView.findViewById(R.id.btnCancelPin);
-
-        PreferencesManager preferencesManager = new PreferencesManager(requireContext());
-
-        btnSubmit.setOnClickListener(v -> {
-            String enteredPin = etPin.getText().toString().trim();
-            if (enteredPin.isEmpty()) {
-                Toast.makeText(getContext(), "Please enter your PIN", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (enteredPin.length() != 4 || !enteredPin.matches("\\d{4}")) {
-                Toast.makeText(getContext(), "PIN must be 4 digits", Toast.LENGTH_SHORT).show();
-                etPin.setText("");
-                return;
-            }
-            if (preferencesManager.verifyEmergencyPin(enteredPin)) {
-                pinDialog.dismiss();
-                sosDialog.dismiss();
-                Toast.makeText(getContext(), "SOS Canceled", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(getContext(), "Incorrect PIN", Toast.LENGTH_SHORT).show();
-                etPin.setText("");
-            }
-        });
-
-        btnCancel.setOnClickListener(v -> {
-            pinDialog.dismiss();
-            // Resume countdown if time left
-            if (timeLeft > 0) {
-                showSosCountdownWithTimeLeft(sosDialog, timeLeft);
-            }
-        });
-    }
-
-    private void showSosCountdownWithTimeLeft(AlertDialog oldDialog, long timeLeft) {
-        if (oldDialog != null && oldDialog.isShowing()) oldDialog.dismiss();
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.dialog_sos_countdown, null);
-        builder.setView(dialogView);
-        builder.setCancelable(false);
-        final AlertDialog dialog = builder.create();
-        dialog.show();
-        final TextView tvCountdown = dialogView.findViewById(R.id.tvCountdown);
-        Button btnCancelSos = dialogView.findViewById(R.id.btnCancelSos);
-        final long[] timeLeftArr = {timeLeft};
-        final boolean[] isPinDialogOpen = {false};
-        sosCountDownTimer = new CountDownTimer(timeLeftArr[0], 1000) {
-            @Override
-            public void onTick(long millisUntilFinished) {
-                timeLeftArr[0] = millisUntilFinished;
-                tvCountdown.setText(String.valueOf(millisUntilFinished / 1000));
-            }
-            @Override
-            public void onFinish() {
-                if (!isPinDialogOpen[0]) {
-                    dialog.dismiss();
-                    sendSmsToEmergencyContacts();
-                    Intent intent = new Intent(getActivity(), AlertActivity.class);
-                    intent.putExtra(AlertActivity.EXTRA_ALERT_TYPE, "SOS Triggered");
-                    startActivity(intent);
-                }
-            }
-        }.start();
-        btnCancelSos.setOnClickListener(v -> {
-            sosCountDownTimer.cancel();
-            isPinDialogOpen[0] = true;
-            showPinEntryDialog(dialog, timeLeftArr[0]);
-        });
-    }
 
     private void sendSmsToEmergencyContacts() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(requireActivity(), new String[]{Manifest.permission.SEND_SMS}, 101);
+        if (!PermissionUtils.hasSmsPermission(requireContext())) {
+            ActivityCompat.requestPermissions(requireActivity(), new String[]{Manifest.permission.SEND_SMS}, Constants.SMS_PERMISSION_REQUEST_CODE);
         } else {
             sendSmsLogic();
         }
     }
 
     private void sendSmsLogic() {
-        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-            ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(getContext(), "Location permission not granted", Toast.LENGTH_LONG).show();
+        if (!PermissionUtils.hasLocationPermission(requireContext())) {
+            Toast.makeText(getContext(), Constants.ERROR_LOCATION_PERMISSION, Toast.LENGTH_LONG).show();
             return;
         }
         fusedLocationClient.getLastLocation().addOnSuccessListener(requireActivity(), location -> {
@@ -328,7 +218,7 @@ public class HomeFragment extends Fragment {
                     List<EmergencyContact> contacts = AppDatabase.getDatabase(requireContext()).emergencyContactDao().getAll();
                     if (contacts.isEmpty()) {
                         requireActivity().runOnUiThread(() ->
-                                Toast.makeText(getContext(), "No emergency contacts found. Please add contacts in settings.", Toast.LENGTH_LONG).show());
+                                Toast.makeText(getContext(), Constants.ERROR_NO_CONTACTS, Toast.LENGTH_LONG).show());
                         return;
                     }
 
@@ -351,14 +241,14 @@ public class HomeFragment extends Fragment {
 
                     requireActivity().runOnUiThread(() -> {
                         if (sentCount[0] > 0) {
-                            Toast.makeText(getContext(), "Emergency SOS sent to " + sentCount[0] + " contact(s).", Toast.LENGTH_LONG).show();
+                            Toast.makeText(getContext(), String.format(Constants.SUCCESS_SOS_SENT, sentCount[0]), Toast.LENGTH_LONG).show();
                         } else {
                             Toast.makeText(getContext(), "Failed to send any SOS messages.", Toast.LENGTH_LONG).show();
                         }
                     });
                 });
             } else {
-                Toast.makeText(getContext(), "Could not get location to send SOS. Please enable location.", Toast.LENGTH_LONG).show();
+                Toast.makeText(getContext(), Constants.ERROR_LOCATION_UNAVAILABLE, Toast.LENGTH_LONG).show();
             }
         }).addOnFailureListener(e -> {
             Toast.makeText(getContext(), "Failed to get location for SOS: " + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -369,19 +259,19 @@ public class HomeFragment extends Fragment {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+        if (requestCode == Constants.LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 getCurrentLocation();
             } else {
                 tvCurrentLocation.setText("Location permission denied.");
                 Toast.makeText(getContext(), "Location permission is required to show current location.", Toast.LENGTH_LONG).show();
             }
-        } else if (requestCode == 101) { // SMS permission
+        } else if (requestCode == Constants.SMS_PERMISSION_REQUEST_CODE) { // SMS permission
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(getContext(), "SMS permission granted. Sending SOS...", Toast.LENGTH_SHORT).show();
                 sendSmsLogic();
             } else {
-                Toast.makeText(getContext(), "SMS permission denied. SOS alerts will not be sent.", Toast.LENGTH_LONG).show();
+                Toast.makeText(getContext(), Constants.ERROR_SMS_PERMISSION, Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -391,9 +281,6 @@ public class HomeFragment extends Fragment {
         super.onDestroy();
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
-        }
-        if (sosCountDownTimer != null) {
-            sosCountDownTimer.cancel();
         }
     }
 } 
